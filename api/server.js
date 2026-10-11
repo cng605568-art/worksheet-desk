@@ -33,24 +33,21 @@ module.exports = async (req, res) => {
   try {
     const a = new URL(req.url, 'http://x').searchParams.get('a');
     
-    // 安全解析 IP
+    // 安全地按字符串数组索引提取 IP，避免运行时抛错死机
     const ipHeader = req.headers['x-forwarded-for'] || '';
     const ip = ipHeader ? ipHeader.split(',')[0].trim() : 'x';
 
-    // 1. 无动作或健康检查：允许 GET
-    if (!a || a === 'health') {
+    if (a === 'health') {
       let db = !!((E.KV_REST_API_URL && E.KV_REST_API_TOKEN) || (E.UPSTASH_REDIS_REST_URL && E.UPSTASH_REDIS_REST_TOKEN));
       if (db) { try { await rd('PING'); } catch (e) { db = false; } }
       return out(res, 200, { db, passcode: !!E.TEACHER_PASSCODE, secret: !!E.TOKEN_SECRET });
     }
-    
-    // 2. 获取公开作业模板：允许 GET
     if (a === 'worksheets') {
       const r = await rd('GET', 'pub');
       return out(res, 200, { worksheets: r ? JSON.parse(r) : [] });
     }
-    
-    // 3. 教师端初始化加载数据：允许 GET 方式触发（完美解决报错）
+
+    // 允许通过 GET 请求初始加载教师端的数据
     if (a === 'load') {
       if (!authed(req)) return out(res, 401, { error: 'Please sign in again.' });
       const wss = JSON.parse((await rd('GET', 'wss')) || '[]');
@@ -60,7 +57,6 @@ module.exports = async (req, res) => {
       return out(res, 200, { wss, subs });
     }
 
-    // 4. 其余涉及敏感、更新数据库的操作强制走 POST
     if (req.method !== 'POST') return out(res, 405, { error: 'Use POST' });
     const b = body(req);
 
