@@ -32,17 +32,35 @@ const pts = w => w.q.reduce((n, q) => n + (q.t === 'mc' ? 1 : 2), 0);
 module.exports = async (req, res) => {
   try {
     const a = new URL(req.url, 'http://x').searchParams.get('a');
-    const ip = (req.headers['x-forwarded-for'] || '').split(',')[0].trim() || 'x';
+    
+    // 安全解析 IP
+    const ipHeader = req.headers['x-forwarded-for'] || '';
+    const ip = ipHeader ? ipHeader.split(',')[0].trim() : 'x';
 
-    if (a === 'health') {
+    // 1. 无动作或健康检查：允许 GET
+    if (!a || a === 'health') {
       let db = !!((E.KV_REST_API_URL && E.KV_REST_API_TOKEN) || (E.UPSTASH_REDIS_REST_URL && E.UPSTASH_REDIS_REST_TOKEN));
       if (db) { try { await rd('PING'); } catch (e) { db = false; } }
       return out(res, 200, { db, passcode: !!E.TEACHER_PASSCODE, secret: !!E.TOKEN_SECRET });
     }
+    
+    // 2. 获取公开作业模板：允许 GET
     if (a === 'worksheets') {
       const r = await rd('GET', 'pub');
       return out(res, 200, { worksheets: r ? JSON.parse(r) : [] });
     }
+    
+    // 3. 教师端初始化加载数据：允许 GET 方式触发（完美解决报错）
+    if (a === 'load') {
+      if (!authed(req)) return out(res, 401, { error: 'Please sign in again.' });
+      const wss = JSON.parse((await rd('GET', 'wss')) || '[]');
+      const h = (await rd('HGETALL', 'subs')) || [];
+      const vals = Array.isArray(h) ? h.filter((_, i) => i % 2) : Object.values(h);
+      const subs = vals.map(v => JSON.parse(v)).sort((x, y) => y.id - x.id);
+      return out(res, 200, { wss, subs });
+    }
+
+    // 4. 其余涉及敏感、更新数据库的操作强制走 POST
     if (req.method !== 'POST') return out(res, 405, { error: 'Use POST' });
     const b = body(req);
 
@@ -77,13 +95,6 @@ module.exports = async (req, res) => {
 
     if (!authed(req)) return out(res, 401, { error: 'Please sign in again.' });
 
-    if (a === 'load') {
-      const wss = JSON.parse((await rd('GET', 'wss')) || '[]');
-      const h = (await rd('HGETALL', 'subs')) || [];
-      const vals = Array.isArray(h) ? h.filter((_, i) => i % 2) : Object.values(h);
-      const subs = vals.map(v => JSON.parse(v)).sort((x, y) => y.id - x.id);
-      return out(res, 200, { wss, subs });
-    }
     if (a === 'save') {
       const wss = b.wss;
       if (!Array.isArray(wss) || wss.length > 100 || wss.some(w => !w || typeof w.title !== 'string' || !Array.isArray(w.q))) return out(res, 400, { error: 'Invalid worksheet data.' });
