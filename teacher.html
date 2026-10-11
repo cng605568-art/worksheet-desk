@@ -1,0 +1,201 @@
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover"><title>Worksheet Desk · Teacher</title>
+<link href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible:wght@400;700&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#eef2f7;--card:#fff;--tx:#14213d;--mu:#5b6578;--bd:#cfd7e3;--ac:#14213d;--act:#fff;--hl:#ffd23f;--ok:#15803d;--okb:#dcfce7;--bad:#b91c1c;--badb:#fee2e2;--wn:#92400e;--wnb:#fef3c7;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+@media(prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#0d1824;--card:#16253a;--tx:#e8eef5;--mu:#9fb0c6;--bd:#2b3d57;--ac:#ffd23f;--act:#14213d;--ok:#86efac;--okb:#14391f;--bad:#fca5a5;--badb:#4a1d1d;--wn:#fcd34d;--wnb:#4a3411}}
+:root[data-theme="dark"]{--bg:#0d1824;--card:#16253a;--tx:#e8eef5;--mu:#9fb0c6;--bd:#2b3d57;--ac:#ffd23f;--act:#14213d;--ok:#86efac;--okb:#14391f;--bad:#fca5a5;--badb:#4a1d1d;--wn:#fcd34d;--wnb:#4a3411}
+select{width:100%;max-width:300px;background:var(--bg);border:2px solid var(--bd);border-radius:8px;padding:10px;min-height:44px;font:inherit;color:inherit}
+*,*:before,*:after{box-sizing:inherit}html{scroll-padding-top:env(safe-area-inset-top,0px)}
+body{margin:0;background:var(--bg);color:var(--tx);font:17px/1.5 'Atkinson Hyperlegible',system-ui,sans-serif;background-image:linear-gradient(var(--bd) 1px,transparent 1px),linear-gradient(90deg,var(--bd) 1px,transparent 1px);background-size:28px 28px;background-attachment:fixed}
+header{background:var(--card);border-bottom:2px solid var(--tx);position:sticky;top:env(safe-area-inset-top,0px);z-index:5}
+.bar{max-width:860px;margin:auto;padding:10px 14px;display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+.logo{font-weight:700;font-size:20px;margin-right:auto}
+nav{display:flex;gap:6px;overflow-x:auto;width:100%;order:3}
+nav button{flex:1;white-space:nowrap}
+main{max-width:860px;margin:auto;padding:16px 14px 60px}
+button,input,textarea{font:inherit;color:inherit}
+button{cursor:pointer;border:2px solid var(--tx);background:var(--card);border-radius:8px;padding:9px 14px;min-height:44px}
+button.tab[aria-selected=true]{background:var(--hl);color:#14213d;font-weight:700}
+button.pri{background:var(--ac);color:var(--act);font-weight:700}
+button.sm{min-height:36px;padding:4px 10px;font-size:15px}
+button:focus-visible,input:focus-visible,textarea:focus-visible{outline:3px solid var(--hl);outline-offset:2px}
+.card{background:var(--card);border:2px solid var(--tx);border-radius:10px;padding:16px;margin:0 0 14px;box-shadow:4px 4px 0 var(--tx)}
+h1{font-size:26px;margin:4px 0 14px}h2{font-size:20px;margin:0 0 8px}
+.mu{color:var(--mu);font-size:15px}
+input[type=text],input[type=number],input[type=password],textarea{width:100%;background:var(--bg);border:2px solid var(--bd);border-radius:8px;padding:10px;min-height:44px}
+textarea{min-height:100px;resize:vertical}
+.opt{display:flex;gap:10px;align-items:center;padding:10px;border:2px solid var(--bd);border-radius:8px;margin:6px 0;cursor:pointer}
+.opt input[type=radio]{width:22px;height:22px;accent-color:var(--tx);flex:none}
+.opt:has(input:checked){border-color:var(--tx);background:var(--hl);color:#14213d}
+.opt.edit{cursor:default}.opt.edit input[type=text]{border:0;padding:4px;min-height:32px;background:transparent}
+.q{font-weight:700;margin:0 0 10px}
+.badge{display:inline-block;padding:2px 10px;border-radius:99px;font-size:14px;font-weight:700}
+.b-p{background:var(--wnb);color:var(--wn)}.b-m{background:var(--okb);color:var(--ok)}
+.drop{border:3px dashed var(--tx);border-radius:12px;padding:36px 16px;text-align:center;background:var(--card)}
+.drop.over{background:var(--hl);color:#14213d}
+.spin{width:44px;height:44px;border:5px solid var(--bd);border-top-color:var(--tx);border-radius:50%;margin:0 auto 14px;animation:s 1s linear infinite}
+@keyframes s{to{transform:rotate(360deg)}}@media(prefers-reduced-motion:reduce){.spin{animation-duration:4s}}
+.row{display:flex;justify-content:space-between;align-items:center;gap:10px;width:100%;text-align:left;margin:0 0 10px;padding:14px;box-shadow:3px 3px 0 var(--tx)}
+.cmp{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+@media(max-width:560px){.cmp{grid-template-columns:1fr}}
+.cell{border-radius:8px;padding:10px;border:2px solid var(--bd);white-space:pre-wrap;overflow-wrap:anywhere}
+.cell.good{background:var(--okb);border-color:var(--ok)}.cell.bad{background:var(--badb);border-color:var(--bad)}
+.cell b{display:block;font-size:14px;color:var(--mu)}
+.actions{display:flex;gap:10px;flex-wrap:wrap}
+.modal{position:fixed;inset:0;background:rgba(10,18,30,.7);display:flex;align-items:center;justify-content:center;padding:20px;z-index:20}
+.modal .card{max-width:380px;text-align:center;margin:0}
+.tick{font-size:48px}
+.toast{max-width:90vw;text-align:center;position:fixed;left:50%;bottom:calc(20px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);background:var(--tx);color:var(--bg);padding:10px 18px;border-radius:8px;z-index:30}
+</style></head><body>
+<header><div class="bar"><span class="logo">✏️ Worksheet Desk · Teacher</span><button id="th" class="sm" aria-label="Toggle light or dark theme">Dark mode</button>
+<nav role="tablist" id="nv"></nav></div></header>
+<main id="app"></main><div id="ov"></div>
+<script>
+const $=s=>document.querySelector(s),esc=s=>String(s==null?'':s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const SEED={title:'Photosynthesis basics',q:[
+{t:'mc',q:'Which gas do plants take in for photosynthesis?',o:['Oxygen','Carbon dioxide','Nitrogen','Hydrogen'],a:1},
+{t:'mc',q:'Where in the cell does photosynthesis happen?',o:['Nucleus','Mitochondria','Chloroplast','Ribosome'],a:2},
+{t:'tx',q:'In two or three sentences, explain why sunlight matters to a plant.',a:'Sunlight supplies the energy plants use to turn carbon dioxide and water into glucose and oxygen.'},
+{t:'tx',q:'Describe what would happen to a plant kept in the dark for a week.',a:'It could not make glucose, so it would run out of stored energy, yellow and eventually die.'}]};
+const S={wss:[{id:1,...SEED}],subs:[],old:[],tab:'upload',up:'idle',D:null,sel:null,cur:null,done:{},A:{},name:''};
+try{const d=JSON.parse(localStorage.getItem('wdesk'));if(d){S.wss=d.wss||(d.ws?[{id:1,...d.ws}]:S.wss);S.subs=d.subs||[];S.old=d.old||[]}}catch(e){}
+const save=()=>{try{localStorage.setItem('wdesk',JSON.stringify({wss:S.wss,subs:S.subs,old:S.old}));localStorage.setItem('wdesk_pub',JSON.stringify(S.wss.map(w=>({id:w.id,title:w.title,q:w.q.map(q=>q.t==='mc'?{t:q.t,q:q.q,o:q.o}:{t:q.t,q:q.q})}))))}catch(e){toast('Could not save. Browser storage may be full or blocked.')}};
+const pts=q=>q.t==='mc'?1:2,total=w=>w.q.reduce((n,q)=>n+pts(q),0);
+/* TEACHER AUTH */
+S.auth=false;S.gate='login';let AU=null,LAST=Date.now();
+try{AU=JSON.parse(localStorage.getItem('wdesk_auth'))}catch(e){}
+const saveAU=()=>{try{localStorage.setItem('wdesk_auth',JSON.stringify(AU))}catch(e){}};
+const hex=a=>[...new Uint8Array(a)].map(x=>x.toString(16).padStart(2,'0')).join('');
+const rnd=n=>hex(crypto.getRandomValues(new Uint8Array(n))),newRec=()=>rnd(6).toUpperCase().match(/.{4}/g).join('-'),clean=c=>c.replace(/[^a-z0-9]/gi,'').toUpperCase();
+async function H(txt,salt){const t=salt+':'+txt;
+if(window.crypto&&crypto.subtle){const e=new TextEncoder(),k=await crypto.subtle.importKey('raw',e.encode(txt),'PBKDF2',false,['deriveBits']);return hex(await crypto.subtle.deriveBits({name:'PBKDF2',hash:'SHA-256',salt:e.encode(salt),iterations:100000},k,256))}
+let a=0xdeadbeef,b=0x41c6ce57;for(let r=0;r<5000;r++)for(let i=0;i<t.length;i++){const c=t.charCodeAt(i);a=Math.imul(a^c,2654435761);b=Math.imul(b^c,1597334677)}
+a=Math.imul(a^(a>>>16),2246822507)^Math.imul(b^(b>>>13),3266489909);b=Math.imul(b^(b>>>16),2246822507)^Math.imul(a^(a>>>13),3266489909);return(b>>>0).toString(16)+(a>>>0).toString(16)}
+function wait(){const w=AU.u-Date.now();if(w>0){toast('Too many attempts. Try again in '+Math.ceil(w/1000)+' seconds.');return true}return false}
+function bad(){AU.f++;if(AU.f>=5)AU.u=Date.now()+Math.min(30000*2**(AU.f-5),900000);saveAU();toast(AU.f>=5?'Too many attempts. Locked for a while.':'Wrong code. '+(5-AU.f)+' tries left.')}
+function pass2(){const a=$('#p1').value,b=$('#p2').value;if(a.length<6){toast('Use at least 6 characters');return null}if(a!==b){toast('The two passcodes do not match');return null}return a}
+async function setPass(reset){if(reset){if(wait())return;if(await H(clean($('#rc').value),AU.r)!==AU.rh){bad();return}}
+const a=pass2();if(a===null)return;const rec=newRec();AU={s:rnd(8),r:rnd(8),f:0,u:0};AU.h=await H(a,AU.s);AU.rh=await H(clean(rec),AU.r);saveAU();S.rec=rec;S.gate='recovery';render()}
+async function signIn(){if(wait())return;if(await H($('#pw').value,AU.s)===AU.h){AU.f=0;AU.u=0;saveAU();mergeInbox();S.auth=true;S.tab=S.subs.some(x=>x.status!=='Marked')?'dash':'upload';LAST=Date.now();render();scrollTo(0,0)}else bad()}
+function lock(){S.auth=false;S.sel=null;S.cur=null;S.gate='login';S.tab='upload';render();scrollTo(0,0)}
+['pointerdown','keydown'].forEach(e=>addEventListener(e,()=>{LAST=Date.now()}));
+addEventListener('keydown',e=>{if(e.key==='Enter'&&e.target.id==='pw')signIn()});
+setInterval(()=>{if(S.auth&&Date.now()-LAST>6e5){lock();toast('Locked after 10 minutes of inactivity')}},15000);
+document.addEventListener('visibilitychange',()=>{if(document.hidden)window.HID=Date.now();else if(S.auth&&Date.now()-(window.HID||Date.now())>12e4){lock();toast('Locked while the app was in the background')}});
+function gate(){
+if(S.gate==='recovery')return`<div class="card"><h1>Save your recovery code</h1><p>If you forget your passcode, this code is the only way to reset it. Write it down and keep it away from students. It will not be shown again.</p><p class="q" style="font-size:26px;letter-spacing:2px;text-align:center" dir="ltr">${S.rec}</p><button class="pri" onclick="S.rec='';S.gate='login';S.auth=true;LAST=Date.now();render()">I've saved it, continue</button></div>`;
+const f=(id,l,ac)=>`<label class="q" for="${id}" style="display:block;margin-top:12px">${l}</label><input type="password" id="${id}" autocomplete="${ac}">`;
+if(!AU)return`<div class="card"><h1>Set a teacher passcode</h1><p>Only people with this passcode can open the upload and marking screens. Choose one your students can't guess.</p>${f('p1','New passcode (6+ characters)','new-password')}${f('p2','Confirm passcode','new-password')}<div style="margin-top:14px"><button class="pri" onclick="setPass(false)">Save passcode</button></div></div>`;
+if(S.gate==='reset')return`<div class="card"><h1>Reset passcode</h1><p>Enter the recovery code you saved when you set up the passcode.</p><label class="q" for="rc" style="display:block;margin-top:12px">Recovery code</label><input type="text" id="rc" autocomplete="off" dir="ltr">${f('p1','New passcode (6+ characters)','new-password')}${f('p2','Confirm new passcode','new-password')}<div class="actions" style="margin-top:14px"><button class="pri" onclick="setPass(true)">Reset passcode</button><button onclick="S.gate='login';render()">Back</button></div></div>`;
+return`<div class="card"><h1>Teacher sign in</h1><p>Enter your passcode to upload worksheets and mark student work.</p>${f('pw','Passcode','current-password')}<div class="actions" style="margin-top:14px"><button class="pri" onclick="signIn()">Sign in</button><button onclick="S.gate='reset';render()">Forgot passcode?</button></div></div>`}
+function toast(m){const e=document.createElement('div');e.className='toast';e.textContent=m;document.body.append(e);setTimeout(()=>e.remove(),4500)}
+function go(t){S.tab=t;S.sel=null;render();scrollTo(0,0)}
+$('#nv').onclick=e=>{const b=e.target.closest('button.tab');if(b)go(b.dataset.t)};
+$('#th').onclick=()=>{const r=document.documentElement,dark=r.dataset.theme?r.dataset.theme==='dark':matchMedia('(prefers-color-scheme:dark)').matches;r.dataset.theme=dark?'light':'dark';$('#th').textContent=dark?'Dark mode':'Light mode'};
+function render(){
+const pend=S.subs.filter(s=>s.status!=='Marked').length,T=S.auth?[['upload','Upload'],['dash','Dashboard'+(pend?' ('+pend+')':'')]]:[];
+$('#nv').innerHTML=T.map(([t,l])=>`<button class="tab" role="tab" data-t="${t}" aria-selected="${S.auth?S.tab===t:(t==='student')===(S.tab==='student')}">${l}</button>`).join('')+(S.auth?'<button class="sm" onclick="lock()" style="flex:none">🔒 Lock</button>':'');
+$('#app').innerHTML=!S.auth?gate():S.tab==='upload'?upload():dash();
+document.querySelectorAll('#app .q,#app .cell,#app textarea,#app input[type=text],#app .opt').forEach(e=>e.setAttribute('dir','auto'));
+if(S.tab==='upload')bindDrop()}
+function rmWs(id){if(!S.auth)return;const w=S.wss.find(x=>x.id===id);if(w)S.old.push(w);S.wss=S.wss.filter(x=>x.id!==id);save();render();toast('Removed')}
+/* UPLOAD */
+function upload(){
+if(S.up==='busy')return'<div class="card" style="text-align:center;padding:50px 16px" role="status"><div class="spin"></div><h2>AI converting worksheet to digital format…</h2><p class="mu" id="bm">Reading questions and finding answer choices.</p></div>';
+if(S.up==='review'&&S.D)return review();
+return`<h1>Upload a worksheet</h1><div class="drop" id="dz"><div style="font-size:40px">📄</div><p class="q">Drag a PDF here or tap to browse</p><p class="mu">The AI turns it into multiple-choice and written questions you can review. Scanned PDFs and photos are read with text recognition.</p><p class="mu" style="margin:12px 0 4px">Worksheet language (used for scanned PDFs)</p><select id="lg" aria-label="Worksheet language" onchange="S.lang=this.value">${LG.map(l=>`<option value="${l[0]}" ${S.lang===l[0]?'selected':''}>${l[1]}</option>`).join('')}</select><div class="actions" style="margin-top:14px" style="justify-content:center"><button class="pri" id="bb">Choose PDF</button><button id="sb">Try a sample</button></div><input type="file" id="fi" accept=".pdf,application/pdf" style="position:absolute;width:1px;height:1px;opacity:0;pointer-events:none" tabindex="-1" aria-hidden="true"></div>`+(S.wss.length?`<h2 style="margin-top:20px">Published worksheets (${S.wss.length})</h2>`+S.wss.map(w=>`<div class="card" style="display:flex;justify-content:space-between;align-items:center;gap:10px;box-shadow:none"><span><b>${esc(w.title)}</b><br><span class="mu">${w.q.length} questions</span></span><button class="sm" onclick="rmWs(${w.id})" aria-label="Remove ${esc(w.title)}">Remove</button></div>`).join(''):'<p class="mu">No worksheets published yet.</p>')}
+function bindDrop(){const dz=$('#dz'),fi=$('#fi');if(!dz)return;
+dz.ondragover=e=>{e.preventDefault();dz.classList.add('over')};dz.ondragleave=()=>dz.classList.remove('over');
+dz.ondrop=e=>{e.preventDefault();dz.classList.remove('over');pick(e.dataTransfer.files[0])};
+$('#bb').onclick=()=>fi.click();$('#sb').onclick=()=>pick({name:'Photosynthesis basics.pdf',type:'application/pdf'});
+fi.onchange=()=>{if(fi.files&&fi.files[0])pick(fi.files[0]);else toast('No file was selected')}}
+function pick(f){if(!S.auth||!f)return;if(!/pdf$/i.test(f.type)&&!/\.pdf$/i.test(f.name)){toast('Please choose a PDF file');return}
+S.up='busy';render();
+const nm=f.name.replace(/\.pdf$/i,'').replace(/[_-]+/g,' ').trim()||'Untitled worksheet';
+(f.arrayBuffer?readLines(f).then(L=>L.join('').length>15?L:ocrLines(f)).then(L=>{const D=parse(L,nm.charAt(0).toUpperCase()+nm.slice(1));
+if(!D.q.length)throw Error(L.length?"Couldn't find questions in this PDF. Number them like 1. or Q1.":'No readable text found, even with text recognition. Try a clearer scan, or pick the worksheet language.');return D}):Promise.resolve(JSON.parse(JSON.stringify(SEED))))
+.then(D=>{S.D=D;S.up='review';render()}).catch(e=>{S.up='idle';render();toast(e.message||'Could not read this PDF')})}
+const PB='https://cdn.jsdelivr.net/npm/pdfjs-dist@3.11.174/';
+const pdfOpts=async f=>({data:await f.arrayBuffer(),cMapUrl:PB+'cmaps/',cMapPacked:true,standardFontDataUrl:PB+'standard_fonts/'});
+function loadPdfJs(){return(window.pdfjsLib?Promise.resolve():new Promise((ok,no)=>{const s=document.createElement('script');s.src=PB+'build/pdf.min.js';s.onload=ok;s.onerror=()=>no(Error('Could not load the PDF reader. Check your internet connection.'));document.head.append(s)})).then(()=>{pdfjsLib.GlobalWorkerOptions.workerSrc=PB+'build/pdf.worker.min.js'})}
+const DG=d=>{let c=d.codePointAt(0),b=c;while(/\p{Nd}/u.test(String.fromCodePoint(b-1)))b--;return(c-b)%10};
+const norm=l=>l.replace(/[\u2460-\u2467]/g,c=>' '+'ABCDEFGH'[c.charCodeAt(0)-9312]+') ').normalize('NFKC').replace(/[\u200e\u200f\u202a-\u202e\u2066-\u2069]/g,'').replace(/\p{Nd}/gu,DG).replace(/\s+/g,' ').trim();
+const LG=[['eng','English'],['chi_sim','简体中文 (Chinese Simplified)'],['chi_tra','繁體中文 (Chinese Traditional)'],['jpn','日本語 (Japanese)'],['kor','한국어 (Korean)'],['ara','العربية (Arabic)'],['heb','עברית (Hebrew)'],['rus','Русский (Russian)'],['ell','Ελληνικά (Greek)'],['hin','हिन्दी (Hindi)'],['spa','Español'],['fra','Français'],['deu','Deutsch'],['por','Português'],['ita','Italiano'],['tur','Türkçe']];
+{const d=(navigator.language||'en').toLowerCase();S.lang=/zh-(tw|hk|hant)/.test(d)?'chi_tra':d.startsWith('zh')?'chi_sim':({ja:'jpn',ko:'kor',ar:'ara',he:'heb',ru:'rus',el:'ell',hi:'hin',es:'spa',fr:'fra',de:'deu',pt:'por',it:'ita',tr:'tur'}[d.slice(0,2)]||'eng')}
+const say=t=>{const e=$('#bm');if(e)e.textContent=t};
+const CJK='(\\p{Script=Han}|[\\u3040-\\u30ff\\uac00-\\ud7af])',CJR=new RegExp(CJK+'\\s+(?='+CJK.slice(1,-1).replace(/^/,'')+')','gu');
+function loadScript(u,flag){return window[flag]?Promise.resolve():new Promise((ok,no)=>{const s=document.createElement('script');s.src=u;s.onload=ok;s.onerror=()=>no(Error('Could not load the text recognition engine. Check your internet connection.'));document.head.append(s)})}
+async function ocrLines(f){say('Loading the text recognition engine…');await loadScript('https://cdnjs.cloudflare.com/ajax/libs/tesseract.js/5.1.1/tesseract.min.js','Tesseract');
+const doc=await pdfjsLib.getDocument(await pdfOpts(f)).promise,lg=S.lang==='eng'?'eng':S.lang+'+eng',out=[];let pg=0;
+const w=await Tesseract.createWorker(lg,1,{logger:m=>say(m.status==='recognizing text'?'Reading page '+pg+' of '+Math.min(doc.numPages,15)+'… '+Math.round(m.progress*100)+'%':'Preparing text recognition. The first run downloads language data.')});
+try{for(pg=1;pg<=doc.numPages&&pg<=15;pg++){const page=await doc.getPage(pg),vp=page.getViewport({scale:2.5}),c=document.createElement('canvas');c.width=vp.width;c.height=vp.height;
+await page.render({canvasContext:c.getContext('2d'),viewport:vp}).promise;
+const r=await w.recognize(c);r.data.text.split('\n').forEach(l=>{const n=norm(l.replace(CJR,'$1'));if(n)out.push(n)})}}finally{await w.terminate()}
+return out}
+async function readLines(f){await loadPdfJs();const doc=await pdfjsLib.getDocument(await pdfOpts(f)).promise,pages=[];
+for(let p=1;p<=doc.numPages;p++){const tc=await(await doc.getPage(p)).getTextContent(),rows={},out=[];
+tc.items.forEach(it=>{if(!it.str)return;const y=Math.round(it.transform[5]/4);(rows[y]=rows[y]||[]).push(it)});
+Object.keys(rows).map(Number).sort((a,b)=>b-a).forEach(y=>{let r=rows[y];if(!r.some(i=>i.dir==='rtl'))r=r.slice().sort((a,b)=>a.transform[4]-b.transform[4]);out.push(norm(r.map(i=>i.str).join(' ')))});pages.push(out.filter(Boolean))}
+const cnt={},k=l=>l.replace(/\d+/g,'#');pages.forEach(pl=>new Set(pl.map(k)).forEach(x=>cnt[x]=(cnt[x]||0)+1));
+return pages.flat().filter(l=>pages.length<2||cnt[k(l)]<2)}
+const KEY='(?:correct\\s+)?(?:answers?|ans|key|respuesta|r[ée]ponse|antwort|l[öo]sung|resposta|risposta|jawaban|cevap|odpowied[zź]|antwoord|ответ|απάντηση|答案|答え|解答|정답|उत्तर|الإجابة|الاجابة|תשובה)';
+function parse(lines,name){const QR=/^(?:\p{L}{1,8}\.?\s*)?(\d{1,3})\s*[題题問号號番]?\s*[.)\]:、。]\s*(.+)/u,
+OS='(?:[.)、]\\s+|[.)、](?=[^\\x00-\\x7F]))',OR=new RegExp('(?:^|\\s)\\(?(\\p{L})'+OS,'u'),OL=new RegExp('^\\(?\\p{L}'+OS,'u'),AR=new RegExp('^'+KEY+'\\s*[:\\-]\\s*(.+)','iu'),KR=new RegExp(KEY,'iu'),
+NK=/(\d{1,3})\s*[.)、:\-]?\s*([A-Da-d])(?![\p{L}\p{Nd}])/gu,END=/[:?؟。.!)_]\s*$/;
+const qs=[],km={};let cur=null,title='',m;
+for(const l of lines){
+if(/^[_\-.…—\s]{3,}$/.test(l))continue;
+if(m=l.match(QR)){cur={n:m[1],q:m[2],o:[],lab:[],txt:'',key:null};qs.push(cur);continue}
+if(KR.test(l)){const k=[...l.matchAll(NK)];if(k.length>=2){k.forEach(x=>km[x[1]]=x[2].toLowerCase());cur=null;continue}}
+if(!cur){if(!title&&l.length<90&&!/(name|date|nombre|fecha|nom|datum|имя|дата|名前|姓名|日期|이름|الاسم|التاريخ)\s*:/iu.test(l))title=l;continue}
+if(m=l.match(AR)){const t=m[1].trim(),k=t.match(/^\(?(\p{L})(?![\p{L}\p{Nd}])/u);cur.key=k?k[1].toLowerCase():null;cur.txt=t;continue}
+if(OL.test(l)){const p=l.split(OR),f=p[1].toLowerCase(),a=cur.lab[cur.lab.length-1],
+ok=cur.o.length?(/[a-z]/.test(a)&&/[a-z]/.test(f)?f.charCodeAt(0)===a.charCodeAt(0)+1:true):(/[a-z]/.test(f)?f==='a':true);
+if(!ok){cur=null;continue}
+for(let i=1;i<p.length;i+=2){cur.lab.push(p[i].toLowerCase());cur.o.push((p[i+1]||'').trim())}continue}
+if(cur.o.length)cur.o[cur.o.length-1]+=' '+l;else if(!END.test(cur.q))cur.q+=' '+l}
+const cl=t=>t.replace(/_{2,}/g,'').replace(/\s+/g,' ').trim();
+let q=qs.map(x=>{if(x.o.length>=2){const k=x.key!=null?x.key:km[x.n]!=null?km[x.n]:null;let a=k!=null?x.lab.indexOf(k):-1;if(a<0&&x.txt)a=x.o.findIndex(o=>o.toLowerCase()===x.txt.toLowerCase());return{t:'mc',q:cl(x.q),o:x.o,a}}return{t:'tx',q:cl(x.q),a:x.txt}});
+if(!q.length)q=lines.filter(l=>/[?؟]\s*$/.test(l)).map(l=>({t:'tx',q:l,a:''}));
+return{title:(title||name).slice(0,80),q}}
+function review(){const D=S.D;
+return`<h1>Review digital version</h1><p class="mu">Edit anything the AI got wrong, mark the correct answers, then publish.</p>
+<div class="card"><label class="q" for="wt">Worksheet title</label><input type="text" id="wt" value="${esc(D.title)}" oninput="S.D.title=this.value"></div>`+
+D.q.map((q,i)=>`<div class="card"><div style="display:flex;justify-content:space-between;align-items:center"><span class="badge b-p">${q.t==='mc'?'Multiple choice':'Written sentences'}</span><button class="sm" onclick="S.D.q.splice(${i},1);render()" aria-label="Delete question ${i+1}">Delete</button></div>
+<textarea style="min-height:70px;margin:10px 0" aria-label="Question ${i+1} text" oninput="S.D.q[${i}].q=this.value">${esc(q.q)}</textarea>`+
+(q.t==='mc'?q.o.map((o,j)=>`<div class="opt edit"><input type="radio" name="c${i}" ${q.a===j?'checked':''} onchange="S.D.q[${i}].a=${j}" aria-label="Mark option ${j+1} correct"><input type="text" value="${esc(o)}" oninput="S.D.q[${i}].o[${j}]=this.value" aria-label="Option ${j+1}"></div>`).join('')+`<button class="sm" onclick="S.D.q[${i}].o.push('New option');render()">+ Add option</button><p class="mu">Select the radio button next to the correct answer.</p>`:
+`<label class="mu" for="a${i}">Model answer (shown to you when marking)</label><textarea id="a${i}" oninput="S.D.q[${i}].a=this.value">${esc(q.a)}</textarea>`)+'</div>').join('')+
+`<div class="actions" style="margin-bottom:14px"><button onclick="S.D.q.push({t:'mc',q:'New question',o:['Option A','Option B','Option C'],a:0});render()">+ Multiple choice</button><button onclick="S.D.q.push({t:'tx',q:'New written question',a:''});render()">+ Written question</button></div>
+<div class="actions"><button class="pri" onclick="publish()">Publish worksheet</button><button onclick="S.up='idle';S.D=null;render()">Discard</button></div>`}
+function publish(){if(!S.auth)return;if(!S.D.q.length){toast('Add at least one question');return}
+if(S.D.q.some(q=>q.t==='mc'&&q.o[q.a]===undefined)){toast('Mark the correct answer on every multiple-choice question');return}
+S.wss.push({id:Date.now(),title:S.D.title,q:S.D.q});S.D=null;S.up='idle';S.A={};S.cur=null;save();toast('Published');render();scrollTo(0,0)}
+/* DASHBOARD */
+const fmt=t=>new Date(t).toLocaleString([], {month:'short',day:'numeric',hour:'numeric',minute:'2-digit'});
+function dash(){if(S.sel)return grade(S.subs.find(s=>s.id===S.sel));
+if(!S.subs.length)return'<h1>Submissions</h1><div class="card"><h2>No submissions yet</h2><p class="mu">When a student submits from the student page, their work shows up here.</p></div>';
+return'<h1>Submissions</h1>'+S.subs.map(s=>`<button class="row card" onclick="S.sel=${s.id};render()"><span><b>${esc(s.name)}</b><br><span class="mu">${esc(s.ws.title)} · ${fmt(s.ts)}</span></span><span class="badge ${s.status==='Marked'?'b-m':'b-p'}">${s.status}${s.status==='Marked'?' · '+s.score+'/'+total(s.ws):''}</span></button>`).join('')}
+function grade(s){if(!s){S.sel=null;return dash()}
+let auto=0;const body=s.ws.q.map((q,i)=>{const a=s.ans[i];let st,cr;
+if(q.t==='mc'){const ok=a===q.a;if(ok)auto++;st=`<div class="cell ${a==null?'bad':ok?'good':'bad'}"><b>Student chose</b>${a==null?'(no answer)':esc(q.o[a])}</div>`;cr=`<div class="cell"><b>Correct answer</b>${esc(q.o[q.a])}</div>`}
+else{st=`<div class="cell"><b>Student wrote</b>${a&&a.trim()?esc(a):'(no answer)'}</div>`;cr=`<div class="cell"><b>Model answer</b>${esc(q.a)||'(none set)'}</div>`}
+return`<div class="card"><p class="q">${i+1}. ${esc(q.q)} <span class="mu">(${pts(q)} pt${pts(q)>1?'s':''})</span></p><div class="cmp">${st}${cr}</div></div>`}).join('');
+const sc=s.score==null?auto:s.score;
+return`<button class="sm" onclick="S.sel=null;render()" style="margin-bottom:10px">← All submissions</button><h1>${esc(s.name)}</h1><p class="mu" style="margin-top:-8px">${esc(s.ws.title)} · ${fmt(s.ts)} · <span class="badge ${s.status==='Marked'?'b-m':'b-p'}">${s.status}</span></p>${body}
+<div class="card"><h2>Grade and feedback</h2><p class="mu">Multiple-choice answers are pre-scored (${auto} correct). Add points for written answers.</p>
+<label for="sc" class="q">Score out of ${total(s.ws)}</label><input type="number" id="sc" min="0" max="${total(s.ws)}" value="${sc}" style="max-width:140px">
+<label for="fb" class="q" style="display:block;margin-top:14px">Feedback comment</label><textarea id="fb" placeholder="What went well, what to revisit">${esc(s.fb)}</textarea>
+<div style="margin-top:14px"><button class="pri" onclick="saveGrade(${s.id})">Save grade</button></div></div>`}
+function saveGrade(id){if(!S.auth)return;const s=S.subs.find(x=>x.id===id),mx=total(s.ws),v=Number($('#sc').value);
+if(isNaN(v)||v<0||v>mx){toast('Enter a score from 0 to '+mx);return}
+s.score=v;s.fb=$('#fb').value;s.status='Marked';save();S.sel=null;render();toast('Grade saved')}
+function mergeInbox(){let ib=[];try{ib=JSON.parse(localStorage.getItem('wdesk_inbox'))||[]}catch(e){}
+if(!ib.length)return false;const rest=[];let n=0;
+ib.forEach(x=>{if(S.subs.some(s=>s.id===x.id))return;const w=S.wss.concat(S.old).find(w=>w.id===x.wid);
+if(!w){rest.push(x);return}S.subs.unshift({id:x.id,name:x.name,ts:x.ts,ans:x.ans,ws:w,status:'Pending Review',score:null,fb:''});n++});
+try{rest.length?localStorage.setItem('wdesk_inbox',JSON.stringify(rest)):localStorage.removeItem('wdesk_inbox')}catch(e){}
+if(n)save();return n>0}
+addEventListener('storage',e=>{if(e.key==='wdesk_inbox'&&mergeInbox()&&S.auth&&S.tab==='dash'&&!S.sel)render()});
+mergeInbox();save();
+render();
+</script></body></html>

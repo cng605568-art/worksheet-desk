@@ -1,0 +1,76 @@
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover"><title>Worksheet Desk</title>
+<link href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible:wght@400;700&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#eef2f7;--card:#fff;--tx:#14213d;--mu:#5b6578;--bd:#cfd7e3;--ac:#14213d;--act:#fff;--hl:#ffd23f;--ok:#15803d;--okb:#dcfce7;--bad:#b91c1c;--badb:#fee2e2;--wn:#92400e;--wnb:#fef3c7;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+@media(prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#0d1824;--card:#16253a;--tx:#e8eef5;--mu:#9fb0c6;--bd:#2b3d57;--ac:#ffd23f;--act:#14213d;--ok:#86efac;--okb:#14391f;--bad:#fca5a5;--badb:#4a1d1d;--wn:#fcd34d;--wnb:#4a3411}}
+:root[data-theme="dark"]{--bg:#0d1824;--card:#16253a;--tx:#e8eef5;--mu:#9fb0c6;--bd:#2b3d57;--ac:#ffd23f;--act:#14213d;--ok:#86efac;--okb:#14391f;--bad:#fca5a5;--badb:#4a1d1d;--wn:#fcd34d;--wnb:#4a3411}
+select{width:100%;max-width:300px;background:var(--bg);border:2px solid var(--bd);border-radius:8px;padding:10px;min-height:44px;font:inherit;color:inherit}
+*,*:before,*:after{box-sizing:inherit}html{scroll-padding-top:env(safe-area-inset-top,0px)}
+body{margin:0;background:var(--bg);color:var(--tx);font:17px/1.5 'Atkinson Hyperlegible',system-ui,sans-serif;background-image:linear-gradient(var(--bd) 1px,transparent 1px),linear-gradient(90deg,var(--bd) 1px,transparent 1px);background-size:28px 28px;background-attachment:fixed}
+header{background:var(--card);border-bottom:2px solid var(--tx);position:sticky;top:env(safe-area-inset-top,0px);z-index:5}
+.bar{max-width:860px;margin:auto;padding:10px 14px;display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+.logo{font-weight:700;font-size:20px;margin-right:auto}
+nav{display:flex;gap:6px;overflow-x:auto;width:100%;order:3}
+nav button{flex:1;white-space:nowrap}
+main{max-width:860px;margin:auto;padding:16px 14px 60px}
+button,input,textarea{font:inherit;color:inherit}
+button{cursor:pointer;border:2px solid var(--tx);background:var(--card);border-radius:8px;padding:9px 14px;min-height:44px}
+button.tab[aria-selected=true]{background:var(--hl);color:#14213d;font-weight:700}
+button.pri{background:var(--ac);color:var(--act);font-weight:700}
+button.sm{min-height:36px;padding:4px 10px;font-size:15px}
+button:focus-visible,input:focus-visible,textarea:focus-visible{outline:3px solid var(--hl);outline-offset:2px}
+.card{background:var(--card);border:2px solid var(--tx);border-radius:10px;padding:16px;margin:0 0 14px;box-shadow:4px 4px 0 var(--tx)}
+h1{font-size:26px;margin:4px 0 14px}h2{font-size:20px;margin:0 0 8px}
+.mu{color:var(--mu);font-size:15px}
+input[type=text],input[type=number],input[type=password],textarea{width:100%;background:var(--bg);border:2px solid var(--bd);border-radius:8px;padding:10px;min-height:44px}
+textarea{min-height:100px;resize:vertical}
+.opt{display:flex;gap:10px;align-items:center;padding:10px;border:2px solid var(--bd);border-radius:8px;margin:6px 0;cursor:pointer}
+.opt input[type=radio]{width:22px;height:22px;accent-color:var(--tx);flex:none}
+.opt:has(input:checked){border-color:var(--tx);background:var(--hl);color:#14213d}
+.opt.edit{cursor:default}.opt.edit input[type=text]{border:0;padding:4px;min-height:32px;background:transparent}
+.q{font-weight:700;margin:0 0 10px}
+.badge{display:inline-block;padding:2px 10px;border-radius:99px;font-size:14px;font-weight:700}
+.b-p{background:var(--wnb);color:var(--wn)}.b-m{background:var(--okb);color:var(--ok)}
+.drop{border:3px dashed var(--tx);border-radius:12px;padding:36px 16px;text-align:center;background:var(--card)}
+.drop.over{background:var(--hl);color:#14213d}
+.spin{width:44px;height:44px;border:5px solid var(--bd);border-top-color:var(--tx);border-radius:50%;margin:0 auto 14px;animation:s 1s linear infinite}
+@keyframes s{to{transform:rotate(360deg)}}@media(prefers-reduced-motion:reduce){.spin{animation-duration:4s}}
+.row{display:flex;justify-content:space-between;align-items:center;gap:10px;width:100%;text-align:left;margin:0 0 10px;padding:14px;box-shadow:3px 3px 0 var(--tx)}
+.cmp{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+@media(max-width:560px){.cmp{grid-template-columns:1fr}}
+.cell{border-radius:8px;padding:10px;border:2px solid var(--bd);white-space:pre-wrap;overflow-wrap:anywhere}
+.cell.good{background:var(--okb);border-color:var(--ok)}.cell.bad{background:var(--badb);border-color:var(--bad)}
+.cell b{display:block;font-size:14px;color:var(--mu)}
+.actions{display:flex;gap:10px;flex-wrap:wrap}
+.modal{position:fixed;inset:0;background:rgba(10,18,30,.7);display:flex;align-items:center;justify-content:center;padding:20px;z-index:20}
+.modal .card{max-width:380px;text-align:center;margin:0}
+.tick{font-size:48px}
+.toast{max-width:90vw;text-align:center;position:fixed;left:50%;bottom:calc(20px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);background:var(--tx);color:var(--bg);padding:10px 18px;border-radius:8px;z-index:30}
+</style></head><body>
+<header><div class="bar"><span class="logo">✏️ Worksheet Desk</span><button id="th" class="sm" aria-label="Toggle light or dark theme">Dark mode</button></div></header>
+<main id="app"></main><div id="ov"></div>
+<script>
+const $=s=>document.querySelector(s),esc=s=>String(s==null?'':s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const S={pub:[],cur:null,done:{},A:{},name:''};
+function load(){try{S.pub=JSON.parse(localStorage.getItem('wdesk_pub'))||[]}catch(e){S.pub=[]}}
+function toast(m){const e=document.createElement('div');e.className='toast';e.textContent=m;document.body.append(e);setTimeout(()=>e.remove(),4500)}
+$('#th').onclick=()=>{const r=document.documentElement,dark=r.dataset.theme?r.dataset.theme==='dark':matchMedia('(prefers-color-scheme:dark)').matches;r.dataset.theme=dark?'light':'dark';$('#th').textContent=dark?'Dark mode':'Light mode'};
+function render(){$('#app').innerHTML=student();document.querySelectorAll('#app .q,#app textarea,#app input[type=text],#app .opt').forEach(e=>e.setAttribute('dir','auto'))}
+function student(){const n=S.pub.length;if(!n)return'<div class="card"><h1>No worksheets yet</h1><p>Your teacher hasn\'t published a worksheet yet. Check back soon.</p></div>';
+const w=S.pub.find(x=>x.id===S.cur);
+if(!w)return`<h1>Choose a worksheet</h1><p class="mu" style="margin-top:-8px">${n} worksheet${n>1?'s':''} available</p>`+S.pub.map(x=>{const mc=x.q.filter(q=>q.t==='mc').length;
+return`<button class="row card" onclick="openWs(${x.id})"><span><b>${esc(x.title)}</b><br><span class="mu">${x.q.length} question${x.q.length>1?'s':''} · ${mc} multiple choice · ${x.q.length-mc} written</span></span><span class="badge ${S.done[x.id]?'b-m':'b-p'}">${S.done[x.id]?'Submitted':'Start'}</span></button>`}).join('');
+return`<button class="sm" onclick="S.cur=null;S.A={};render()" style="margin-bottom:10px">← All worksheets</button><h1>${esc(w.title)}</h1><div class="card"><label for="nm" class="q">Your name</label><input type="text" id="nm" value="${esc(S.name)}" oninput="S.name=this.value" autocomplete="name"></div>`+
+w.q.map((q,i)=>`<div class="card"><p class="q">${i+1}. ${esc(q.q)}</p>`+(q.t==='mc'?q.o.map((o,j)=>`<label class="opt"><input type="radio" name="q${i}" ${S.A[i]===j?'checked':''} onchange="S.A[${i}]=${j}"> ${esc(o)}</label>`).join(''):`<textarea aria-label="Answer to question ${i+1}" placeholder="Type your answer here" oninput="S.A[${i}]=this.value">${esc(S.A[i]||'')}</textarea>`)+'</div>').join('')+
+'<button class="pri" style="width:100%" onclick="submitWs()">Submit worksheet</button>'}
+function openWs(id){S.cur=id;S.A={};render();scrollTo(0,0)}
+function submitWs(){const n=S.name.trim();if(!n){toast('Enter your name first');$('#nm').focus();return}
+const w=S.pub.find(x=>x.id===S.cur);if(!w)return;let ib=[];try{ib=JSON.parse(localStorage.getItem('wdesk_inbox'))||[]}catch(e){}
+ib.push({id:Date.now(),wid:w.id,name:n,ts:new Date().toISOString(),ans:{...S.A}});
+try{localStorage.setItem('wdesk_inbox',JSON.stringify(ib))}catch(e){toast('Could not send your answers. Please tell your teacher.');return}
+S.done[S.cur]=1;S.cur=null;S.A={};S.name='';render();
+$('#ov').innerHTML='<div class="modal" role="dialog" aria-modal="true" aria-labelledby="mt"><div class="card"><div class="tick">✅</div><h2 id="mt">Submitted successfully</h2><p class="mu">Your teacher can now see your answers.</p><button class="pri" id="okb">Done</button></div></div>';
+$('#okb').focus();$('#okb').onclick=()=>{$('#ov').innerHTML=''}}
+addEventListener('storage',e=>{if(e.key==='wdesk_pub'){load();if(!S.pub.find(x=>x.id===S.cur))S.cur=null;render()}});
+load();render();
+</script></body></html>
