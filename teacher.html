@@ -57,37 +57,28 @@ const SEED={title:'Photosynthesis basics',q:[
 {t:'mc',q:'Where in the cell does photosynthesis happen?',o:['Nucleus','Mitochondria','Chloroplast','Ribosome'],a:2},
 {t:'tx',q:'In two or three sentences, explain why sunlight matters to a plant.',a:'Sunlight supplies the energy plants use to turn carbon dioxide and water into glucose and oxygen.'},
 {t:'tx',q:'Describe what would happen to a plant kept in the dark for a week.',a:'It could not make glucose, so it would run out of stored energy, yellow and eventually die.'}]};
-const S={wss:[{id:1,...SEED}],subs:[],old:[],tab:'upload',up:'idle',D:null,sel:null,cur:null,done:{},A:{},name:''};
-try{const d=JSON.parse(localStorage.getItem('wdesk'));if(d){S.wss=d.wss||(d.ws?[{id:1,...d.ws}]:S.wss);S.subs=d.subs||[];S.old=d.old||[]}}catch(e){}
-const save=()=>{try{localStorage.setItem('wdesk',JSON.stringify({wss:S.wss,subs:S.subs,old:S.old}));localStorage.setItem('wdesk_pub',JSON.stringify(S.wss.map(w=>({id:w.id,title:w.title,q:w.q.map(q=>q.t==='mc'?{t:q.t,q:q.q,o:q.o}:{t:q.t,q:q.q})}))))}catch(e){toast('Could not save. Browser storage may be full or blocked.')}};
+const S={wss:[],subs:[],tab:'upload',up:'idle',D:null,sel:null,token:'',auth:false,health:null};
 const pts=q=>q.t==='mc'?1:2,total=w=>w.q.reduce((n,q)=>n+pts(q),0);
-/* TEACHER AUTH */
-S.auth=false;S.gate='login';let AU=null,LAST=Date.now();
-try{AU=JSON.parse(localStorage.getItem('wdesk_auth'))}catch(e){}
-const saveAU=()=>{try{localStorage.setItem('wdesk_auth',JSON.stringify(AU))}catch(e){}};
-const hex=a=>[...new Uint8Array(a)].map(x=>x.toString(16).padStart(2,'0')).join('');
-const rnd=n=>hex(crypto.getRandomValues(new Uint8Array(n))),newRec=()=>rnd(6).toUpperCase().match(/.{4}/g).join('-'),clean=c=>c.replace(/[^a-z0-9]/gi,'').toUpperCase();
-async function H(txt,salt){const t=salt+':'+txt;
-if(window.crypto&&crypto.subtle){const e=new TextEncoder(),k=await crypto.subtle.importKey('raw',e.encode(txt),'PBKDF2',false,['deriveBits']);return hex(await crypto.subtle.deriveBits({name:'PBKDF2',hash:'SHA-256',salt:e.encode(salt),iterations:100000},k,256))}
-let a=0xdeadbeef,b=0x41c6ce57;for(let r=0;r<5000;r++)for(let i=0;i<t.length;i++){const c=t.charCodeAt(i);a=Math.imul(a^c,2654435761);b=Math.imul(b^c,1597334677)}
-a=Math.imul(a^(a>>>16),2246822507)^Math.imul(b^(b>>>13),3266489909);b=Math.imul(b^(b>>>16),2246822507)^Math.imul(a^(a>>>13),3266489909);return(b>>>0).toString(16)+(a>>>0).toString(16)}
-function wait(){const w=AU.u-Date.now();if(w>0){toast('Too many attempts. Try again in '+Math.ceil(w/1000)+' seconds.');return true}return false}
-function bad(){AU.f++;if(AU.f>=5)AU.u=Date.now()+Math.min(30000*2**(AU.f-5),900000);saveAU();toast(AU.f>=5?'Too many attempts. Locked for a while.':'Wrong code. '+(5-AU.f)+' tries left.')}
-function pass2(){const a=$('#p1').value,b=$('#p2').value;if(a.length<6){toast('Use at least 6 characters');return null}if(a!==b){toast('The two passcodes do not match');return null}return a}
-async function setPass(reset){if(reset){if(wait())return;if(await H(clean($('#rc').value),AU.r)!==AU.rh){bad();return}}
-const a=pass2();if(a===null)return;const rec=newRec();AU={s:rnd(8),r:rnd(8),f:0,u:0};AU.h=await H(a,AU.s);AU.rh=await H(clean(rec),AU.r);saveAU();S.rec=rec;S.gate='recovery';render()}
-async function signIn(){if(wait())return;if(await H($('#pw').value,AU.s)===AU.h){AU.f=0;AU.u=0;saveAU();mergeInbox();S.auth=true;S.tab=S.subs.some(x=>x.status!=='Marked')?'dash':'upload';LAST=Date.now();render();scrollTo(0,0)}else bad()}
-function lock(){S.auth=false;S.sel=null;S.cur=null;S.gate='login';S.tab='upload';render();scrollTo(0,0)}
+/* TEACHER AUTH (checked on the server) */
+let LAST=Date.now();
+async function api(a,payload){const r=await fetch('/api/server?a='+a,{method:'POST',headers:{'Content-Type':'application/json',Authorization:'Bearer '+S.token},body:JSON.stringify(payload||{}),cache:'no-store'});
+const j=await r.json().catch(()=>({}));if(r.status===401&&S.auth){lock();toast('Please sign in again.')}if(!r.ok)throw Error(j.error||'Request failed');return j}
+async function loadState(quiet){try{const j=await api('load');S.wss=j.wss;S.subs=j.subs}catch(e){if(!quiet)toast(e.message)}}
+async function saveWss(){try{await api('save',{wss:S.wss});return true}catch(e){toast('Could not save: '+e.message);return false}}
+async function health(){try{const r=await fetch('/api/server?a=health',{cache:'no-store'});S.health=r.ok?await r.json():false}catch(e){S.health=false}if(!S.auth)render()}
+async function signIn(){const pw=$('#pw').value;if(!pw){toast('Enter your passcode');return}const btn=$('#app button.pri');btn.disabled=true;
+try{const r=await fetch('/api/server?a=login',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({passcode:pw})});const j=await r.json().catch(()=>({}));if(!r.ok)throw Error(j.error||'Sign in failed');
+S.token=j.token;S.auth=true;LAST=Date.now();await loadState();S.tab=S.subs.some(x=>x.status!=='Marked')?'dash':'upload';render();scrollTo(0,0)}
+catch(e){toast(e.message==='Failed to fetch'?'Cannot reach the server. Open this page from your website address.':e.message);btn.disabled=false}}
+function lock(){S.auth=false;S.token='';S.sel=null;S.wss=[];S.subs=[];S.tab='upload';render();scrollTo(0,0)}
 ['pointerdown','keydown'].forEach(e=>addEventListener(e,()=>{LAST=Date.now()}));
 addEventListener('keydown',e=>{if(e.key==='Enter'&&e.target.id==='pw')signIn()});
 setInterval(()=>{if(S.auth&&Date.now()-LAST>6e5){lock();toast('Locked after 10 minutes of inactivity')}},15000);
 document.addEventListener('visibilitychange',()=>{if(document.hidden)window.HID=Date.now();else if(S.auth&&Date.now()-(window.HID||Date.now())>12e4){lock();toast('Locked while the app was in the background')}});
-function gate(){
-if(S.gate==='recovery')return`<div class="card"><h1>Save your recovery code</h1><p>If you forget your passcode, this code is the only way to reset it. Write it down and keep it away from students. It will not be shown again.</p><p class="q" style="font-size:26px;letter-spacing:2px;text-align:center" dir="ltr">${S.rec}</p><button class="pri" onclick="S.rec='';S.gate='login';S.auth=true;LAST=Date.now();render()">I've saved it, continue</button></div>`;
-const f=(id,l,ac)=>`<label class="q" for="${id}" style="display:block;margin-top:12px">${l}</label><input type="password" id="${id}" autocomplete="${ac}">`;
-if(!AU)return`<div class="card"><h1>Set a teacher passcode</h1><p>Only people with this passcode can open the upload and marking screens. Choose one your students can't guess.</p>${f('p1','New passcode (6+ characters)','new-password')}${f('p2','Confirm passcode','new-password')}<div style="margin-top:14px"><button class="pri" onclick="setPass(false)">Save passcode</button></div></div>`;
-if(S.gate==='reset')return`<div class="card"><h1>Reset passcode</h1><p>Enter the recovery code you saved when you set up the passcode.</p><label class="q" for="rc" style="display:block;margin-top:12px">Recovery code</label><input type="text" id="rc" autocomplete="off" dir="ltr">${f('p1','New passcode (6+ characters)','new-password')}${f('p2','Confirm new passcode','new-password')}<div class="actions" style="margin-top:14px"><button class="pri" onclick="setPass(true)">Reset passcode</button><button onclick="S.gate='login';render()">Back</button></div></div>`;
-return`<div class="card"><h1>Teacher sign in</h1><p>Enter your passcode to upload worksheets and mark student work.</p>${f('pw','Passcode','current-password')}<div class="actions" style="margin-top:14px"><button class="pri" onclick="signIn()">Sign in</button><button onclick="S.gate='reset';render()">Forgot passcode?</button></div></div>`}
+function gate(){const h=S.health;let warn='';
+if(h===false)warn='<div class="card" style="box-shadow:none;border-color:var(--bad)"><b>Cannot reach the server.</b><p class="mu">Open this page from your website address (for example your-site.vercel.app/teacher), not from a downloaded file.</p></div>';
+else if(h&&!(h.db&&h.passcode&&h.secret))warn='<div class="card" style="box-shadow:none;border-color:var(--bad)"><b>Setup is not finished.</b><ul class="mu">'+(h.db?'':'<li>Connect a Redis database (Upstash) to this Vercel project.</li>')+(h.passcode?'':'<li>Add the TEACHER_PASSCODE environment variable.</li>')+(h.secret?'':'<li>Add the TOKEN_SECRET environment variable.</li>')+'</ul><p class="mu">Then redeploy the project in Vercel.</p></div>';
+return warn+`<div class="card"><h1>Teacher sign in</h1><p>Enter your passcode to upload worksheets and mark student work.</p><label class="q" for="pw" style="display:block;margin-top:12px">Passcode</label><input type="password" id="pw" autocomplete="current-password"><div class="actions" style="margin-top:14px"><button class="pri" onclick="signIn()">Sign in</button></div><p class="mu" style="margin-top:12px">Forgot it? Change TEACHER_PASSCODE in your Vercel project settings, then redeploy.</p></div>`}
 function toast(m){const e=document.createElement('div');e.className='toast';e.textContent=m;document.body.append(e);setTimeout(()=>e.remove(),4500)}
 function go(t){S.tab=t;S.sel=null;render();scrollTo(0,0)}
 $('#nv').onclick=e=>{const b=e.target.closest('button.tab');if(b)go(b.dataset.t)};
@@ -98,7 +89,7 @@ $('#nv').innerHTML=T.map(([t,l])=>`<button class="tab" role="tab" data-t="${t}" 
 $('#app').innerHTML=!S.auth?gate():S.tab==='upload'?upload():dash();
 document.querySelectorAll('#app .q,#app .cell,#app textarea,#app input[type=text],#app .opt').forEach(e=>e.setAttribute('dir','auto'));
 if(S.tab==='upload')bindDrop()}
-function rmWs(id){if(!S.auth)return;const w=S.wss.find(x=>x.id===id);if(w)S.old.push(w);S.wss=S.wss.filter(x=>x.id!==id);save();render();toast('Removed')}
+async function rmWs(id){if(!S.auth)return;const old=S.wss;S.wss=S.wss.filter(x=>x.id!==id);if(!await saveWss()){S.wss=old;return}render();toast('Removed')}
 /* UPLOAD */
 function upload(){
 if(S.up==='busy')return'<div class="card" style="text-align:center;padding:50px 16px" role="status"><div class="spin"></div><h2>AI converting worksheet to digital format…</h2><p class="mu" id="bm">Reading questions and finding answer choices.</p></div>';
@@ -167,14 +158,14 @@ D.q.map((q,i)=>`<div class="card"><div style="display:flex;justify-content:space
 `<label class="mu" for="a${i}">Model answer (shown to you when marking)</label><textarea id="a${i}" oninput="S.D.q[${i}].a=this.value">${esc(q.a)}</textarea>`)+'</div>').join('')+
 `<div class="actions" style="margin-bottom:14px"><button onclick="S.D.q.push({t:'mc',q:'New question',o:['Option A','Option B','Option C'],a:0});render()">+ Multiple choice</button><button onclick="S.D.q.push({t:'tx',q:'New written question',a:''});render()">+ Written question</button></div>
 <div class="actions"><button class="pri" onclick="publish()">Publish worksheet</button><button onclick="S.up='idle';S.D=null;render()">Discard</button></div>`}
-function publish(){if(!S.auth)return;if(!S.D.q.length){toast('Add at least one question');return}
+async function publish(){if(!S.auth)return;if(!S.D.q.length){toast('Add at least one question');return}
 if(S.D.q.some(q=>q.t==='mc'&&q.o[q.a]===undefined)){toast('Mark the correct answer on every multiple-choice question');return}
-S.wss.push({id:Date.now(),title:S.D.title,q:S.D.q});S.D=null;S.up='idle';S.A={};S.cur=null;save();toast('Published');render();scrollTo(0,0)}
+const w={id:Date.now(),title:S.D.title,q:S.D.q};S.wss.push(w);if(!await saveWss()){S.wss.pop();return}S.D=null;S.up='idle';toast('Published');render();scrollTo(0,0)}
 /* DASHBOARD */
 const fmt=t=>new Date(t).toLocaleString([], {month:'short',day:'numeric',hour:'numeric',minute:'2-digit'});
 function dash(){if(S.sel)return grade(S.subs.find(s=>s.id===S.sel));
-if(!S.subs.length)return'<h1>Submissions</h1><div class="card"><h2>No submissions yet</h2><p class="mu">When a student submits from the student page, their work shows up here.</p></div>';
-return'<h1>Submissions</h1>'+S.subs.map(s=>`<button class="row card" onclick="S.sel=${s.id};render()"><span><b>${esc(s.name)}</b><br><span class="mu">${esc(s.ws.title)} · ${fmt(s.ts)}</span></span><span class="badge ${s.status==='Marked'?'b-m':'b-p'}">${s.status}${s.status==='Marked'?' · '+s.score+'/'+total(s.ws):''}</span></button>`).join('')}
+if(!S.subs.length)return'<div style="display:flex;justify-content:space-between;align-items:center;gap:10px"><h1>Submissions</h1><button class="sm" onclick="refresh()">Refresh</button></div><div class="card"><h2>No submissions yet</h2><p class="mu">When a student submits from the student page, their work shows up here.</p></div>';
+return'<div style="display:flex;justify-content:space-between;align-items:center;gap:10px"><h1>Submissions</h1><button class="sm" onclick="refresh()">Refresh</button></div>'+S.subs.map(s=>`<button class="row card" onclick="S.sel=${s.id};render()"><span><b>${esc(s.name)}</b><br><span class="mu">${esc(s.ws.title)} · ${fmt(s.ts)}</span></span><span class="badge ${s.status==='Marked'?'b-m':'b-p'}">${s.status}${s.status==='Marked'?' · '+s.score+'/'+total(s.ws):''}</span></button>`).join('')}
 function grade(s){if(!s){S.sel=null;return dash()}
 let auto=0;const body=s.ws.q.map((q,i)=>{const a=s.ans[i];let st,cr;
 if(q.t==='mc'){const ok=a===q.a;if(ok)auto++;st=`<div class="cell ${a==null?'bad':ok?'good':'bad'}"><b>Student chose</b>${a==null?'(no answer)':esc(q.o[a])}</div>`;cr=`<div class="cell"><b>Correct answer</b>${esc(q.o[q.a])}</div>`}
@@ -186,16 +177,11 @@ return`<button class="sm" onclick="S.sel=null;render()" style="margin-bottom:10p
 <label for="sc" class="q">Score out of ${total(s.ws)}</label><input type="number" id="sc" min="0" max="${total(s.ws)}" value="${sc}" style="max-width:140px">
 <label for="fb" class="q" style="display:block;margin-top:14px">Feedback comment</label><textarea id="fb" placeholder="What went well, what to revisit">${esc(s.fb)}</textarea>
 <div style="margin-top:14px"><button class="pri" onclick="saveGrade(${s.id})">Save grade</button></div></div>`}
-function saveGrade(id){if(!S.auth)return;const s=S.subs.find(x=>x.id===id),mx=total(s.ws),v=Number($('#sc').value);
+async function saveGrade(id){if(!S.auth)return;const s=S.subs.find(x=>x.id===id),mx=total(s.ws),v=Number($('#sc').value);
 if(isNaN(v)||v<0||v>mx){toast('Enter a score from 0 to '+mx);return}
-s.score=v;s.fb=$('#fb').value;s.status='Marked';save();S.sel=null;render();toast('Grade saved')}
-function mergeInbox(){let ib=[];try{ib=JSON.parse(localStorage.getItem('wdesk_inbox'))||[]}catch(e){}
-if(!ib.length)return false;const rest=[];let n=0;
-ib.forEach(x=>{if(S.subs.some(s=>s.id===x.id))return;const w=S.wss.concat(S.old).find(w=>w.id===x.wid);
-if(!w){rest.push(x);return}S.subs.unshift({id:x.id,name:x.name,ts:x.ts,ans:x.ans,ws:w,status:'Pending Review',score:null,fb:''});n++});
-try{rest.length?localStorage.setItem('wdesk_inbox',JSON.stringify(rest)):localStorage.removeItem('wdesk_inbox')}catch(e){}
-if(n)save();return n>0}
-addEventListener('storage',e=>{if(e.key==='wdesk_inbox'&&mergeInbox()&&S.auth&&S.tab==='dash'&&!S.sel)render()});
-mergeInbox();save();
+try{const j=await api('grade',{id,score:v,fb:$('#fb').value});Object.assign(s,j.sub);S.sel=null;render();toast('Grade saved')}catch(e){toast('Could not save: '+e.message)}}
+async function refresh(){await loadState();render();toast('Updated')}
+setInterval(async()=>{if(S.auth&&S.tab==='dash'&&!S.sel&&!document.hidden){await loadState(true);if(S.auth&&S.tab==='dash'&&!S.sel)render()}},15000);
+health();
 render();
 </script></body></html>

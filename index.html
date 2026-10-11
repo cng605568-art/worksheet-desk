@@ -51,26 +51,29 @@ textarea{min-height:100px;resize:vertical}
 <main id="app"></main><div id="ov"></div>
 <script>
 const $=s=>document.querySelector(s),esc=s=>String(s==null?'':s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
-const S={pub:[],cur:null,done:{},A:{},name:''};
-function load(){try{S.pub=JSON.parse(localStorage.getItem('wdesk_pub'))||[]}catch(e){S.pub=[]}}
+const S={pub:[],loaded:false,err:'',cur:null,done:{},A:{},name:''};
 function toast(m){const e=document.createElement('div');e.className='toast';e.textContent=m;document.body.append(e);setTimeout(()=>e.remove(),4500)}
 $('#th').onclick=()=>{const r=document.documentElement,dark=r.dataset.theme?r.dataset.theme==='dark':matchMedia('(prefers-color-scheme:dark)').matches;r.dataset.theme=dark?'light':'dark';$('#th').textContent=dark?'Dark mode':'Light mode'};
+async function load(manual){try{const r=await fetch('/api/server?a=worksheets',{cache:'no-store'});if(!r.ok)throw 0;S.pub=(await r.json()).worksheets||[];S.err=''}catch(e){S.err='Cannot reach the server. Check your internet and try again.'}
+S.loaded=true;if(S.cur&&!S.pub.find(x=>x.id===S.cur))S.cur=null;if(!S.cur)render();if(manual&&!S.err)toast('Updated')}
 function render(){$('#app').innerHTML=student();document.querySelectorAll('#app .q,#app textarea,#app input[type=text],#app .opt').forEach(e=>e.setAttribute('dir','auto'))}
-function student(){const n=S.pub.length;if(!n)return'<div class="card"><h1>No worksheets yet</h1><p>Your teacher hasn\'t published a worksheet yet. Check back soon.</p></div>';
+function student(){if(!S.loaded)return'<div class="card" role="status"><h2>Loading worksheets…</h2></div>';
+if(S.err&&!S.pub.length)return`<div class="card"><h1>No connection</h1><p>${esc(S.err)}</p><button class="pri" onclick="load(true)">Try again</button></div>`;
+const n=S.pub.length;if(!n)return'<div class="card"><h1>No worksheets yet</h1><p>Your teacher hasn\'t published a worksheet yet. Check back soon.</p><button class="pri" onclick="load(true)">Refresh</button></div>';
 const w=S.pub.find(x=>x.id===S.cur);
-if(!w)return`<h1>Choose a worksheet</h1><p class="mu" style="margin-top:-8px">${n} worksheet${n>1?'s':''} available</p>`+S.pub.map(x=>{const mc=x.q.filter(q=>q.t==='mc').length;
+if(!w)return`<div style="display:flex;justify-content:space-between;align-items:center;gap:10px"><h1>Choose a worksheet</h1><button class="sm" onclick="load(true)">Refresh</button></div><p class="mu" style="margin-top:-8px">${n} worksheet${n>1?'s':''} available</p>`+S.pub.map(x=>{const mc=x.q.filter(q=>q.t==='mc').length;
 return`<button class="row card" onclick="openWs(${x.id})"><span><b>${esc(x.title)}</b><br><span class="mu">${x.q.length} question${x.q.length>1?'s':''} · ${mc} multiple choice · ${x.q.length-mc} written</span></span><span class="badge ${S.done[x.id]?'b-m':'b-p'}">${S.done[x.id]?'Submitted':'Start'}</span></button>`}).join('');
 return`<button class="sm" onclick="S.cur=null;S.A={};render()" style="margin-bottom:10px">← All worksheets</button><h1>${esc(w.title)}</h1><div class="card"><label for="nm" class="q">Your name</label><input type="text" id="nm" value="${esc(S.name)}" oninput="S.name=this.value" autocomplete="name"></div>`+
 w.q.map((q,i)=>`<div class="card"><p class="q">${i+1}. ${esc(q.q)}</p>`+(q.t==='mc'?q.o.map((o,j)=>`<label class="opt"><input type="radio" name="q${i}" ${S.A[i]===j?'checked':''} onchange="S.A[${i}]=${j}"> ${esc(o)}</label>`).join(''):`<textarea aria-label="Answer to question ${i+1}" placeholder="Type your answer here" oninput="S.A[${i}]=this.value">${esc(S.A[i]||'')}</textarea>`)+'</div>').join('')+
-'<button class="pri" style="width:100%" onclick="submitWs()">Submit worksheet</button>'}
+'<button class="pri" id="sb" style="width:100%" onclick="submitWs()">Submit worksheet</button>'}
 function openWs(id){S.cur=id;S.A={};render();scrollTo(0,0)}
-function submitWs(){const n=S.name.trim();if(!n){toast('Enter your name first');$('#nm').focus();return}
-const w=S.pub.find(x=>x.id===S.cur);if(!w)return;let ib=[];try{ib=JSON.parse(localStorage.getItem('wdesk_inbox'))||[]}catch(e){}
-ib.push({id:Date.now(),wid:w.id,name:n,ts:new Date().toISOString(),ans:{...S.A}});
-try{localStorage.setItem('wdesk_inbox',JSON.stringify(ib))}catch(e){toast('Could not send your answers. Please tell your teacher.');return}
+async function submitWs(){const n=S.name.trim();if(!n){toast('Enter your name first');$('#nm').focus();return}
+const w=S.pub.find(x=>x.id===S.cur);if(!w)return;const b=$('#sb');b.disabled=true;b.textContent='Sending…';
+try{const r=await fetch('/api/server?a=submit',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({wid:w.id,name:n,ans:S.A})});const j=await r.json().catch(()=>({}));if(!r.ok)throw Error(j.error||'Could not send');
 S.done[S.cur]=1;S.cur=null;S.A={};S.name='';render();
 $('#ov').innerHTML='<div class="modal" role="dialog" aria-modal="true" aria-labelledby="mt"><div class="card"><div class="tick">✅</div><h2 id="mt">Submitted successfully</h2><p class="mu">Your teacher can now see your answers.</p><button class="pri" id="okb">Done</button></div></div>';
 $('#okb').focus();$('#okb').onclick=()=>{$('#ov').innerHTML=''}}
-addEventListener('storage',e=>{if(e.key==='wdesk_pub'){load();if(!S.pub.find(x=>x.id===S.cur))S.cur=null;render()}});
-load();render();
+catch(e){toast(e.message==='Failed to fetch'?'No connection. Your answers are still here. Try again.':e.message);b.disabled=false;b.textContent='Submit worksheet'}}
+setInterval(()=>{if(!document.hidden&&!S.cur)load()},30000);
+load();
 </script></body></html>
