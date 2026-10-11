@@ -57,7 +57,7 @@ const SEED={title:'Photosynthesis basics',q:[
 {t:'mc',q:'Where in the cell does photosynthesis happen?',o:['Nucleus','Mitochondria','Chloroplast','Ribosome'],a:2},
 {t:'tx',q:'In two or three sentences, explain why sunlight matters to a plant.',a:'Sunlight supplies the energy plants use to turn carbon dioxide and water into glucose and oxygen.'},
 {t:'tx',q:'Describe what would happen to a plant kept in the dark for a week.',a:'It could not make glucose, so it would run out of stored energy, yellow and eventually die.'}]};
-const S={wss:[],subs:[],tab:'upload',up:'idle',D:null,sel:null,token:'',auth:false,health:null};
+const S={wss:[],subs:[],tab:'upload',up:'idle',D:null,sel:null,token:'public-access',auth:true,health:null};
 const pts=q=>q.t==='mc'?1:2,total=w=>w.q.reduce((n,q)=>n+pts(q),0);
 /* TEACHER AUTH (checked on the server) */
 let LAST=Date.now();
@@ -73,8 +73,8 @@ catch(e){toast(e.message==='Failed to fetch'?'Cannot reach the server. Open this
 function lock(){S.auth=false;S.token='';S.sel=null;S.wss=[];S.subs=[];S.tab='upload';render();scrollTo(0,0)}
 ['pointerdown','keydown'].forEach(e=>addEventListener(e,()=>{LAST=Date.now()}));
 addEventListener('keydown',e=>{if(e.key==='Enter'&&e.target.id==='pw')signIn()});
-setInterval(()=>{if(S.auth&&Date.now()-LAST>6e5){lock();toast('Locked after 10 minutes of inactivity')}},15000);
-document.addEventListener('visibilitychange',()=>{if(document.hidden)window.HID=Date.now();else if(S.auth&&Date.now()-(window.HID||Date.now())>12e4){lock();toast('Locked while the app was in the background')}});
+
+
 function gate(){const h=S.health;let warn='';
 if(h===false)warn='<div class="card" style="box-shadow:none;border-color:var(--bad)"><b>Cannot reach the server.</b><p class="mu">Open this page from your website address (for example your-site.vercel.app/teacher), not from a downloaded file.</p></div>';
 else if(h&&!(h.db&&h.passcode&&h.secret))warn='<div class="card" style="box-shadow:none;border-color:var(--bad)"><b>Setup is not finished.</b><ul class="mu">'+(h.db?'':'<li>Connect a Redis database (Upstash) to this Vercel project.</li>')+(h.passcode?'':'<li>Add the TEACHER_PASSCODE environment variable.</li>')+(h.secret?'':'<li>Add the TOKEN_SECRET environment variable.</li>')+'</ul><p class="mu">Then redeploy the project in Vercel.</p></div>';
@@ -183,5 +183,6 @@ try{const j=await api('grade',{id,score:v,fb:$('#fb').value});Object.assign(s,j.
 async function refresh(){await loadState();render();toast('Updated')}
 setInterval(async()=>{if(S.auth&&S.tab==='dash'&&!S.sel&&!document.hidden){await loadState(true);if(S.auth&&S.tab==='dash'&&!S.sel)render()}},15000);
 health();
+loadState().then(()=>{S.tab=S.subs.some(x=>x.status!=='Marked')?'dash':'upload';render()});
 render();
 </script></body></html>
