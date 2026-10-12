@@ -193,8 +193,27 @@ ${JSON.stringify(questions)}`;
       } catch (e) { return out(res, 502, { error: 'Gemini timed out or could not connect. Try again or use offline suggestions.' }); }
       if (!response.ok) {
         const status = response.status;
-        console.error('[Gemini] status', status);
-        return out(res, status === 429 ? 429 : 502, { error: status === 429 ? 'Gemini free quota reached. Try later or use offline suggestions.' : status === 400 || status === 404 ? 'Gemini model/key rejected. Check GEMINI_MODEL and your key in Vercel.' : status === 403 ? 'Gemini API key is unauthorized. Check your key and project.' : 'Gemini request failed. Try offline suggestions.' });
+        let details = {};
+        try { details = await response.json(); } catch {}
+        const providerCode = String(details?.error?.status || '').slice(0, 80);
+        const providerMessage = String(details?.error?.message || '');
+        // Keep private API keys, request data, and arbitrary upstream text out of user-facing errors.
+        console.error('[Gemini] status:', status, 'code:', providerCode, 'message:', providerMessage.slice(0, 400));
+        let message;
+        if (status === 429 || providerCode === 'RESOURCE_EXHAUSTED') {
+          message = 'Gemini free quota reached for this project/model. Try later or use offline suggestions.';
+        } else if (status === 404 || /not found|not supported|not available/i.test(providerMessage)) {
+          message = 'Gemini model unavailable. In Vercel, try GEMINI_MODEL = gemini-2.5-flash, then redeploy.';
+        } else if (/API key not valid|invalid API key|API_KEY_INVALID/i.test(providerMessage)) {
+          message = 'Google says the Gemini API key is invalid. Create a new key in Google AI Studio, update GEMINI_API_KEY and redeploy.';
+        } else if (/API key.*(restricted|blocked)|permission|not enabled|PERMISSION_DENIED/i.test(providerMessage) || status === 403) {
+          message = 'Gemini API access denied. Check API key restrictions, project API access, and region.';
+        } else if (status === 400) {
+          message = 'Gemini rejected the request (HTTP 400). Check Vercel logs for the precise Google error and confirm GEMINI_MODEL.';
+        } else {
+          message = 'Gemini API failed (HTTP ' + status + '). Check Vercel function logs or use offline suggestions.';
+        }
+        return out(res, status === 429 ? 429 : 502, { error: message });
       }
       let parsed;
       try {
