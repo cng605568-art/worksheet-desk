@@ -171,13 +171,103 @@ const cl=t=>t.replace(/_{2,}/g,'').replace(/\s+/g,' ').trim();
 let q=qs.map(x=>{if(x.o.length>=2){const k=x.key!=null?x.key:km[x.n]!=null?km[x.n]:null;let a=k!=null?x.lab.indexOf(k):-1;if(a<0&&x.txt)a=x.o.findIndex(o=>o.toLowerCase()===x.txt.toLowerCase());return{t:'mc',q:cl(x.q),o:x.o,a}}return{t:'tx',q:cl(x.q),a:x.txt}});
 if(!q.length)q=lines.filter(l=>/[?؟]\s*$/.test(l)).map(l=>({t:'tx',q:l,a:''}));
 return{title:(title||name).slice(0,80),lang:S.lang==='msa'?'ms':'en',passage:intro.join('\n').slice(0,20000),q}}
+// Malay-aware, offline answer suggestions. These are rule-based, not a remote AI model.
+const MS_WORDS={
+'gembira':['gembira','riang','seronok','suka hati','bahagia','girang'],
+'sedih':['sedih','dukacita','hiba','kecewa','pilu'],
+'marah':['marah','berang','geram'],
+'rajin':['rajin','tekun','gigih'],
+'malas':['malas','pemalas'],
+'besar':['besar','luas','gedang'],
+'kecil':['kecil','halus','comel'],
+'cantik':['cantik','indah','jelita'],
+'cepat':['cepat','pantas','laju'],
+'lambat':['lambat','perlahan'],
+'bersih':['bersih','suci'],
+'kotor':['kotor','comot'],
+'bijak':['bijak','pandai','cerdik'],
+'baik':['baik','bagus','mulia'],
+'buruk':['buruk','jahat','hodoh'],
+'penat':['penat','letih','lesu'],
+'kenyang':['kenyang'],
+'lapar':['lapar'],
+'haus':['haus'],
+'sihat':['sihat'],
+'sakit':['sakit'],
+'manis':['manis'],
+'masam':['masam'],
+'masin':['masin'],
+'pahit':['pahit'],
+'pedas':['pedas']};
+const MS_TRIGGERS=[
+[/berjaya|memenangi|menang|hadiah|tahniah|cemerlang|meraikan|bercuti|hari jadi|menggembirakan|seronok/i,'gembira'],
+[/gagal|kematian|meninggal|kehilangan|menangis|dukacita|sedih/i,'sedih'],
+[/dimarahi|bergaduh|mengamuk|berang|geram/i,'marah'],
+[/belajar bersungguh|setiap hari belajar|menyiapkan kerja sekolah|tekun|gigih/i,'rajin'],
+[/tidak mahu belajar|tidur sepanjang hari|tidak membuat kerja/i,'malas'],
+[/berlari|memecut|pantas|segera/i,'cepat'],
+[/tidak makan|belum makan|perut kosong/i,'lapar'],
+[/tidak minum|tekak kering/i,'haus'],
+[/selepas bersukan|selepas bekerja|keletihan/i,'penat'],
+[/mencuci|mengemas|menyapu|membasuh/i,'bersih']];
+const msNorm=x=>String(x||'').toLocaleLowerCase('ms').normalize('NFKC').replace(/[^\p{L}\p{N} ]/gu,' ').replace(/\s+/g,' ').trim();
+function suggestMalay(q,passage){
+ if(q.t!=='mc'||!Array.isArray(q.o)||q.o.length<2)return null;
+ const opts=q.o.map(msNorm),prompt=msNorm(q.q),body=msNorm(passage||'');
+ // Never guess from the passage if multiple options occur in it.
+ const direct=opts.map((o,i)=>o&&body.includes(o)?i:-1).filter(i=>i>=0);
+ if(direct.length===1&&/berdasarkan petikan|menurut petikan|dalam petikan|siapakah|di manakah|apakah nama|bila|bilakah/i.test(q.q))
+   return {a:direct[0],why:'Only this answer appears in the reading passage. Check the context.',confidence:'medium'};
+ const found=[];
+ for(const [pattern,word] of MS_TRIGGERS){if(!pattern.test(q.q))continue;
+   const synonyms=MS_WORDS[word]||[word];for(let i=0;i<opts.length;i++){
+    if(synonyms.some(w=>opts[i]===w||opts[i].split(' ').includes(w)))found.push({a:i,why:'Malay context clue suggests “'+word+'”.',confidence:'medium'});
+   }
+ }
+ const uniq=[...new Set(found.map(x=>x.a))];return uniq.length===1?found.find(x=>x.a===uniq[0]):null;
+}
+// Gemini suggestions are optional. Uncertain answers remain for teacher review.
+async function geminiSuggest(index=null){
+ if(!S.auth || !S.D)return;
+ const indexes=S.D.q.map((q,i)=>i).filter(i=>index===null?(S.D.q[i].t==='mc'&&!Number.isInteger(S.D.q[i].a) || S.D.q[i].t==='tx'&&!String(S.D.q[i].a||'').trim()):i===index);
+ if(!indexes.length){toast('No unanswered questions. You can still use Gemini on one question.');return}
+ let changed=0,uncertain=0;
+ toast('🤖 Gemini is reading your worksheet…');
+ for(let start=0;start<indexes.length;start+=30){
+  const slice=indexes.slice(start,start+30);
+  try{
+   const result=await api('geminiAnswers',{passage:S.D.passage||'',questions:slice.map(i=>{const q=S.D.q[i];return {t:q.t,q:q.q,...(q.t==='mc'?{o:q.o}:{})}})});
+   for(const a of result.answers||[]){
+    const i=slice[a.index],q=S.D.q[i];if(!q)continue;
+    if(a.confidence==='low'){uncertain++;continue}
+    if(q.t==='mc'&&Number.isInteger(a.answerIndex)){
+      q.a=a.answerIndex;q.suggestion='Gemini ('+a.confidence+'): '+a.reason;changed++;
+    }else if(q.t==='tx'&&typeof a.modelAnswer==='string'&&a.modelAnswer.trim()){
+      q.a=a.modelAnswer;q.suggestion='Gemini ('+a.confidence+'): '+a.reason;changed++;
+    }else uncertain++;
+   }
+  }catch(e){toast('Gemini: '+e.message+' — offline suggestions are still available.');render();return}
+ }
+ render();toast('Gemini suggested '+changed+' answer(s). '+(uncertain?uncertain+' uncertain. ':'')+'Please review before publishing.');
+}
+function suggestOne(i){const q=S.D.q[i];if(!q||q.t!=='mc')return;
+ const s=suggestMalay(q,S.D.passage);if(!s){toast('No reliable Malay suggestion for question '+(i+1)+'. Please select the answer yourself.');return}
+ q.a=s.a;q.suggestion=s.why;render();toast('Suggested answer for question '+(i+1)+'. Please verify it before publishing.');
+ document.getElementById('question-'+i)?.scrollIntoView({block:'center'});
+}
+function suggestAll(){let changed=0;
+ for(let i=0;i<S.D.q.length;i++){const q=S.D.q[i];if(q.t!=='mc'||Number.isInteger(q.a)&&q.a>=0&&q.a<q.o.length)continue;
+ const s=suggestMalay(q,S.D.passage);if(s){q.a=s.a;q.suggestion=s.why;changed++}}
+ render();toast(changed?'Suggested '+changed+' answer(s). Review all suggestions before publishing.':'No reliable suggestions found. Select correct answers manually.');
+}
 function review(){const D=S.D;
-return`<h1>Review digital version</h1><p class="mu">Edit anything the AI got wrong, mark the correct answers, then publish.</p>
+return`<h1>Review digital version</h1><p class="mu">Check extracted text and answers before publishing. Gemini can suggest answers from the passage, but the teacher must verify them.</p>
 <div class="card"><label class="q" for="wt">Worksheet title / Tajuk lembaran kerja</label><input type="text" id="wt" value="${esc(D.title)}" oninput="S.D.title=this.value"><label class="q" for="wl" style="display:block;margin-top:12px">Worksheet language / Bahasa</label><select id="wl" onchange="S.D.lang=this.value"><option value="en" ${D.lang!=='ms'?'selected':''}>English</option><option value="ms" ${D.lang==='ms'?'selected':''}>Bahasa Melayu</option></select></div><div class="card"><label class="q" for="passage">Reading comprehension passage / Petikan kefahaman (文章)</label><p class="mu">Students will see this passage above the questions. Check that the extracted text is complete and correct.</p><textarea id="passage" style="min-height:190px" placeholder="Paste or edit the reading passage here / Tampal petikan di sini" oninput="S.D.passage=this.value">${esc(D.passage||'')}</textarea></div>`+
+`<div class="actions" style="margin-bottom:12px"><button onclick="geminiSuggest()">🤖 Gemini: suggest missing answers</button><button onclick="suggestAll()">🇲🇾 Offline Malay suggestions</button><span class="mu">Suggestions require teacher review; uncertain questions are left blank.</span></div>`+
 D.q.map((q,i)=>`<div class="card" id="question-${i}"><div style="display:flex;justify-content:space-between;align-items:center"><span class="badge b-p">${q.t==='mc'?'Multiple choice':'Written sentences'}</span><button class="sm" onclick="S.D.q.splice(${i},1);render()" aria-label="Delete question ${i+1}">Delete</button></div>
 <textarea style="min-height:70px;margin:10px 0" aria-label="Question ${i+1} text" oninput="S.D.q[${i}].q=this.value">${esc(q.q)}</textarea>`+
-(q.t==='mc'?q.o.map((o,j)=>`<div class="opt edit"><input type="radio" name="c${i}" ${q.a===j?'checked':''} onchange="S.D.q[${i}].a=${j}" aria-label="Mark option ${j+1} correct"><input type="text" value="${esc(o)}" oninput="S.D.q[${i}].o[${j}]=this.value" aria-label="Option ${j+1}"></div>`).join('')+`<button class="sm" onclick="S.D.q[${i}].o.push('New option');render()">+ Add option</button><button class="sm" style="margin-left:8px" onclick="S.D.q[${i}]={t:'tx',q:S.D.q[${i}].q,a:''};render()">Change to written question</button><p class="mu">Select the radio button next to the correct answer. If students should type an answer instead, choose Change to written question.</p>`:
-`<label class="mu" for="a${i}">Model answer (shown to you when marking)</label><textarea id="a${i}" oninput="S.D.q[${i}].a=this.value">${esc(q.a)}</textarea>`)+'</div>').join('')+
+(q.t==='mc'?q.o.map((o,j)=>`<div class="opt edit"><input type="radio" name="c${i}" ${q.a===j?'checked':''} onchange="S.D.q[${i}].a=${j}" aria-label="Mark option ${j+1} correct"><input type="text" value="${esc(o)}" oninput="S.D.q[${i}].o[${j}]=this.value" aria-label="Option ${j+1}"></div>`).join('')+`<button class="sm" onclick="S.D.q[${i}].o.push('New option');render()">+ Add option</button><button class="sm" style="margin-left:8px" onclick="S.D.q[${i}]={t:'tx',q:S.D.q[${i}].q,a:''};render()">Change to written question</button><button class="sm" style="margin-left:8px" onclick="geminiSuggest(${i})">🤖 Gemini answer</button><button class="sm" onclick="suggestOne(${i})">🇲🇾 Offline</button>${q.suggestion?`<p class="mu" role="status">⚠️ Suggested: ${esc(q.suggestion)} Please verify.</p>`:''}<p class="mu">Select the radio button next to the correct answer. If students should type an answer instead, choose Change to written question.</p>`:
+`<label class="mu" for="a${i}">Model answer (shown to you when marking)</label><textarea id="a${i}" oninput="S.D.q[${i}].a=this.value">${esc(q.a)}</textarea><button class="sm" onclick="geminiSuggest(${i})">🤖 Suggest written answer with Gemini</button>${q.suggestion?`<p class="mu">⚠️ ${esc(q.suggestion)} — verify before publishing.</p>`:''}`)+'</div>').join('')+
 `<div class="actions" style="margin-bottom:14px"><button onclick="S.D.q.push({t:'mc',q:'New question',o:['Option A','Option B','Option C'],a:0});render()">+ Multiple choice</button><button onclick="S.D.q.push({t:'tx',q:'New written question',a:''});render()">+ Written question</button></div>
 <div class="actions"><button class="pri" onclick="publish()">Publish worksheet</button><button onclick="S.up='idle';S.D=null;render()">Discard</button></div>`}
 async function publish(){if(!S.auth)return;if(!S.D.q.length){toast('Add at least one question');return}
