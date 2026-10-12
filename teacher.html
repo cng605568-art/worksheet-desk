@@ -27,6 +27,8 @@ textarea{min-height:100px;resize:vertical}
 .opt{display:flex;gap:10px;align-items:center;padding:10px;border:2px solid var(--bd);border-radius:8px;margin:6px 0;cursor:pointer}
 .opt input[type=radio]{width:22px;height:22px;accent-color:var(--tx);flex:none}
 .opt:has(input:checked){border-color:var(--tx);background:var(--hl);color:#14213d}
+.needs-answer{border-color:#c2410c!important;box-shadow:4px 4px 0 #c2410c!important}
+.answer-warning{color:#9a3412;background:#ffedd5;padding:10px;border-radius:8px;font-weight:700;margin:8px 0}
 .opt.edit{cursor:default}.opt.edit input[type=text]{border:0;padding:4px;min-height:32px;background:transparent}
 .q{font-weight:700;margin:0 0 10px}
 .badge{display:inline-block;padding:2px 10px;border-radius:99px;font-size:14px;font-weight:700}
@@ -172,14 +174,23 @@ return{title:(title||name).slice(0,80),q}}
 function review(){const D=S.D;
 return`<h1>Review digital version</h1><p class="mu">Edit anything the AI got wrong, mark the correct answers, then publish.</p>
 <div class="card"><label class="q" for="wt">Worksheet title</label><input type="text" id="wt" value="${esc(D.title)}" oninput="S.D.title=this.value"></div>`+
-D.q.map((q,i)=>`<div class="card"><div style="display:flex;justify-content:space-between;align-items:center"><span class="badge b-p">${q.t==='mc'?'Multiple choice':'Written sentences'}</span><button class="sm" onclick="S.D.q.splice(${i},1);render()" aria-label="Delete question ${i+1}">Delete</button></div>
+D.q.map((q,i)=>`<div class="card" id="question-${i}"><div style="display:flex;justify-content:space-between;align-items:center"><span class="badge b-p">${q.t==='mc'?'Multiple choice':'Written sentences'}</span><button class="sm" onclick="S.D.q.splice(${i},1);render()" aria-label="Delete question ${i+1}">Delete</button></div>
 <textarea style="min-height:70px;margin:10px 0" aria-label="Question ${i+1} text" oninput="S.D.q[${i}].q=this.value">${esc(q.q)}</textarea>`+
-(q.t==='mc'?q.o.map((o,j)=>`<div class="opt edit"><input type="radio" name="c${i}" ${q.a===j?'checked':''} onchange="S.D.q[${i}].a=${j}" aria-label="Mark option ${j+1} correct"><input type="text" value="${esc(o)}" oninput="S.D.q[${i}].o[${j}]=this.value" aria-label="Option ${j+1}"></div>`).join('')+`<button class="sm" onclick="S.D.q[${i}].o.push('New option');render()">+ Add option</button><p class="mu">Select the radio button next to the correct answer.</p>`:
+(q.t==='mc'?q.o.map((o,j)=>`<div class="opt edit"><input type="radio" name="c${i}" ${q.a===j?'checked':''} onchange="S.D.q[${i}].a=${j}" aria-label="Mark option ${j+1} correct"><input type="text" value="${esc(o)}" oninput="S.D.q[${i}].o[${j}]=this.value" aria-label="Option ${j+1}"></div>`).join('')+`<button class="sm" onclick="S.D.q[${i}].o.push('New option');render()">+ Add option</button><button class="sm" style="margin-left:8px" onclick="S.D.q[${i}]={t:'tx',q:S.D.q[${i}].q,a:''};render()">Change to written question</button><p class="mu">Select the radio button next to the correct answer. If students should type an answer instead, choose Change to written question.</p>`:
 `<label class="mu" for="a${i}">Model answer (shown to you when marking)</label><textarea id="a${i}" oninput="S.D.q[${i}].a=this.value">${esc(q.a)}</textarea>`)+'</div>').join('')+
 `<div class="actions" style="margin-bottom:14px"><button onclick="S.D.q.push({t:'mc',q:'New question',o:['Option A','Option B','Option C'],a:0});render()">+ Multiple choice</button><button onclick="S.D.q.push({t:'tx',q:'New written question',a:''});render()">+ Written question</button></div>
 <div class="actions"><button class="pri" onclick="publish()">Publish worksheet</button><button onclick="S.up='idle';S.D=null;render()">Discard</button></div>`}
 async function publish(){if(!S.auth)return;if(!S.D.q.length){toast('Add at least one question');return}
-if(S.D.q.some(q=>q.t==='mc'&&q.o[q.a]===undefined)){toast('Mark the correct answer on every multiple-choice question');return}
+const missing=S.D.q.findIndex(q=>q.t==='mc'&&(!Number.isInteger(q.a)||q.a<0||q.a>=q.o.length));
+if(missing!==-1){
+  const card=document.getElementById('question-'+missing);
+  if(card){card.classList.add('needs-answer');
+    const warning=document.createElement('p');warning.className='answer-warning';warning.setAttribute('role','alert');
+    warning.textContent='Question '+(missing+1)+' needs a correct multiple-choice answer. Select the circle beside the right option, or tap “Change to written question” if students should type their answer.';
+    card.insertBefore(warning,card.children[1]);card.scrollIntoView({behavior:'smooth',block:'center'});
+  }
+  toast('Please check question '+(missing+1)+' above');return;
+}
 const w={id:Date.now(),title:S.D.title,q:S.D.q};S.wss.push(w);if(!await saveWss()){S.wss.pop();return}S.D=null;S.up='idle';toast('Published');render();scrollTo(0,0)}
 /* DASHBOARD */
 const fmt=t=>new Date(t).toLocaleString([], {month:'short',day:'numeric',hour:'numeric',minute:'2-digit'});
