@@ -69,13 +69,15 @@ function tempPassword() { const A = 'abcdefghjkmnpqrstuvwxyz23456789'; let s = '
 /* ---------- worksheet data ---------- */
 function validWorksheet(w) {
   if (!w || typeof w !== 'object' || Array.isArray(w) || typeof w.id !== 'number' || !Number.isSafeInteger(w.id) || typeof w.title !== 'string' || !w.title.trim() || w.title.length > 200 || !Array.isArray(w.q) || w.q.length > MAX_QUESTIONS) return false;
+  if (w.passage != null && (typeof w.passage !== 'string' || w.passage.length > 20000)) return false;
+  if (w.lang != null && !['en','ms'].includes(w.lang)) return false;
   return w.q.every(q => {
     if (!q || typeof q !== 'object' || Array.isArray(q) || typeof q.q !== 'string' || !q.q.trim() || q.q.length > 3000) return false;
     if (q.t === 'mc') return Array.isArray(q.o) && q.o.length >= 2 && q.o.length <= MAX_OPTIONS && q.o.every(o => typeof o === 'string' && o.trim() && o.length <= 500) && Number.isInteger(q.a) && q.a >= 0 && q.a < q.o.length;
     return q.t === 'tx' && (q.a == null || typeof q.a === 'string');
   });
 }
-const pubOf = wss => wss.map(w => ({ id: w.id, title: w.title, q: w.q.map(q => q.t === 'mc' ? { t: 'mc', q: q.q, o: q.o } : { t: 'tx', q: q.q }) }));
+const pubOf = wss => wss.map(w => ({ id: w.id, title: w.title, lang: w.lang || 'en', passage: w.passage || '', q: w.q.map(q => q.t === 'mc' ? { t: 'mc', q: q.q, o: q.o } : { t: 'tx', q: q.q }) }));
 const pts = w => w.q.reduce((n, q) => n + (q.t === 'mc' ? 1 : 2), 0);
 async function state() { const rows = await sb(STATE + '?select=id,wss,pub&id=eq.1'); return rows?.[0] || { wss: [], pub: [] }; }
 
