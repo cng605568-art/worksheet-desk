@@ -57,36 +57,56 @@ const SEED={title:'Photosynthesis basics',q:[
 {t:'mc',q:'Where in the cell does photosynthesis happen?',o:['Nucleus','Mitochondria','Chloroplast','Ribosome'],a:2},
 {t:'tx',q:'In two or three sentences, explain why sunlight matters to a plant.',a:'Sunlight supplies the energy plants use to turn carbon dioxide and water into glucose and oxygen.'},
 {t:'tx',q:'Describe what would happen to a plant kept in the dark for a week.',a:'It could not make glucose, so it would run out of stored energy, yellow and eventually die.'}]};
-const S={wss:[],subs:[],tab:'upload',up:'idle',D:null,sel:null,token:'public-access',auth:true,health:null};
+const ss={get:k=>{try{return sessionStorage.getItem(k)}catch(e){return null}},set:(k,v)=>{try{v==null?sessionStorage.removeItem(k):sessionStorage.setItem(k,v)}catch(e){}}};
+const S={wss:[],subs:[],students:[],tmp:null,tab:'upload',up:'idle',D:null,sel:null,token:ss.get('wdt_t')||'',user:null,auth:false,mode:'login',health:null};
+try{S.user=JSON.parse(ss.get('wdt_u')||'null')}catch(e){}
+S.auth=!!(S.token&&S.user&&S.user.role==='teacher');if(!S.auth)S.token='';
 const pts=q=>q.t==='mc'?1:2,total=w=>w.q.reduce((n,q)=>n+pts(q),0);
-/* TEACHER AUTH (checked on the server) */
+/* TEACHER ACCOUNT (checked on the server) */
 let LAST=Date.now();
 async function api(a,payload){const r=await fetch('/api/server?a='+a,{method:'POST',headers:{'Content-Type':'application/json',Authorization:'Bearer '+S.token},body:JSON.stringify(payload||{}),cache:'no-store'});
 const j=await r.json().catch(()=>({}));if(r.status===401&&S.auth){lock();toast('Please sign in again.')}if(!r.ok)throw Error(j.error||'Request failed');return j}
+async function pub(a,payload){const r=await fetch('/api/server?a='+a,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload),cache:'no-store'});const j=await r.json().catch(()=>({}));if(!r.ok)throw Error(j.error||'Request failed');return j}
 async function loadState(quiet){try{const j=await api('load');S.wss=j.wss;S.subs=j.subs}catch(e){if(!quiet)toast(e.message)}}
 async function saveWss(){try{await api('save',{wss:S.wss});return true}catch(e){toast('Could not save: '+e.message);return false}}
+async function loadStudents(){try{S.students=(await api('students')).students}catch(e){toast(e.message)}if(S.auth)render()}
+async function resetPw(id){try{const j=await api('resetpw',{id});S.tmp={name:j.name,username:j.username,password:j.password};render();scrollTo(0,0)}catch(e){toast(e.message)}}
 async function health(){try{const r=await fetch('/api/server?a=health',{cache:'no-store'});S.health=r.ok?await r.json():false}catch(e){S.health=false}if(!S.auth)render()}
-async function signIn(){const pw=$('#pw').value;if(!pw){toast('Enter your passcode');return}const btn=$('#app button.pri');btn.disabled=true;
-try{const r=await fetch('/api/server?a=login',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({passcode:pw})});const j=await r.json().catch(()=>({}));if(!r.ok)throw Error(j.error||'Sign in failed');
-S.token=j.token;S.auth=true;LAST=Date.now();await loadState();S.tab=S.subs.some(x=>x.status!=='Marked')?'dash':'upload';render();scrollTo(0,0)}
-catch(e){toast(e.message==='Failed to fetch'?'Cannot reach the server. Open this page from your website address.':e.message);btn.disabled=false}}
-function lock(){S.auth=false;S.token='';S.sel=null;S.wss=[];S.subs=[];S.tab='upload';render();scrollTo(0,0)}
+async function authGo(){const m=S.mode,v=id=>($('#'+id)?$('#'+id).value:''),un=v('tu').trim(),pw=v('tp');
+if(!un||!pw){toast('Fill in all the boxes');return}
+if(m!=='login'&&pw!==v('tp2')){toast('The two passwords do not match');return}
+if(m==='create'&&!v('tn').trim()){toast('Enter your name');return}
+if(m!=='login'&&!v('tc')){toast('Enter the teacher code');return}
+const b=$('#app button.pri');b.disabled=true;
+try{if(m==='forgot'){await pub('forgot',{username:un,code:v('tc'),password:pw});S.mode='login';render();toast('Password changed. Sign in with it now.');return}
+const j=await pub(m==='create'?'register':'login',m==='create'?{role:'teacher',name:v('tn'),username:un,password:pw,code:v('tc')}:{as:'teacher',username:un,password:pw});
+S.token=j.token;S.user=j.user;S.auth=true;ss.set('wdt_t',j.token);ss.set('wdt_u',JSON.stringify(j.user));LAST=Date.now();await loadState();S.tab=S.subs.some(x=>x.status!=='Marked')?'dash':'upload';render();scrollTo(0,0)}
+catch(e){toast(e.message==='Failed to fetch'?'Cannot reach the server. Open this page from your website address.':e.message);const bb=$('#app button.pri');if(bb)bb.disabled=false}}
+function lock(){S.auth=false;S.token='';S.user=null;ss.set('wdt_t',null);ss.set('wdt_u',null);S.sel=null;S.wss=[];S.subs=[];S.students=[];S.tmp=null;S.tab='upload';S.mode='login';render();scrollTo(0,0)}
 ['pointerdown','keydown'].forEach(e=>addEventListener(e,()=>{LAST=Date.now()}));
-addEventListener('keydown',e=>{if(e.key==='Enter'&&e.target.id==='pw')signIn()});
-
-
-function gate(){const h=S.health;let warn='';
+addEventListener('keydown',e=>{if(e.key==='Enter'&&['tn','tu','tp','tp2','tc'].includes(e.target.id))authGo()});
+setInterval(()=>{if(S.auth&&Date.now()-LAST>6e5){lock();toast('Signed out after 10 minutes of inactivity')}},15000);
+function gate(){const h=S.health,m=S.mode;let warn='';
 if(h===false)warn='<div class="card" style="box-shadow:none;border-color:var(--bad)"><b>Cannot reach the server.</b><p class="mu">Open this page from your website address (for example your-site.vercel.app/teacher), not from a downloaded file.</p></div>';
-else if(h&&!(h.db&&h.passcode&&h.secret))warn='<div class="card" style="box-shadow:none;border-color:var(--bad)"><b>Setup is not finished.</b><ul class="mu">'+(h.db?'':'<li>Connect a Redis database (Upstash) to this Vercel project.</li>')+(h.passcode?'':'<li>Add the TEACHER_PASSCODE environment variable.</li>')+(h.secret?'':'<li>Add the TOKEN_SECRET environment variable.</li>')+'</ul><p class="mu">Then redeploy the project in Vercel.</p></div>';
-return warn+`<div class="card"><h1>Teacher sign in</h1><p>Enter your passcode to upload worksheets and mark student work.</p><label class="q" for="pw" style="display:block;margin-top:12px">Passcode</label><input type="password" id="pw" autocomplete="current-password"><div class="actions" style="margin-top:14px"><button class="pri" onclick="signIn()">Sign in</button></div><p class="mu" style="margin-top:12px">Forgot it? Change TEACHER_PASSCODE in your Vercel project settings, then redeploy.</p></div>`}
+else if(h&&(!h.db||(m!=='login'&&!h.teacherSignup)))warn='<div class="card" style="box-shadow:none;border-color:var(--bad)"><b>Setup is not finished.</b><ul class="mu">'+(h.db?'':'<li>Check SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY in Vercel, and run supabase-setup.sql in Supabase.</li>')+(h.teacherSignup?'':'<li>Add the TEACHER_SIGNUP_CODE environment variable in Vercel.</li>')+'</ul><p class="mu">Then redeploy the project.</p></div>';
+const f=(id,l,t,ac,x)=>`<label class="q" for="${id}" style="display:block;margin-top:12px">${l}</label><input type="${t}" id="${id}" autocomplete="${ac}" ${x||''}>`,u=f('tu','Username','text','username','autocapitalize="none" spellcheck="false"');
+let title,intro,fields,btn;
+if(m==='create'){title='Create teacher account';intro='You need the teacher code from the site owner. Students cannot create teacher accounts without it.';fields=f('tn','Your name','text','name')+u+f('tp','Password (6+ characters)','password','new-password')+f('tp2','Confirm password','password','new-password')+f('tc','Teacher code','password','off');btn='Create account'}
+else if(m==='forgot'){title='Reset teacher password';intro='Enter your username and the teacher code, then choose a new password.';fields=u+f('tc','Teacher code','password','off')+f('tp','New password (6+ characters)','password','new-password')+f('tp2','Confirm new password','password','new-password');btn='Reset password'}
+else{title='Teacher sign in';intro='Sign in with your teacher account to upload worksheets and mark student work.';fields=u+f('tp','Password','password','current-password');btn='Sign in'}
+return warn+`<div class="card"><h1>${title}</h1><p>${intro}</p>${fields}<div class="actions" style="margin-top:14px"><button class="pri" onclick="authGo()">${btn}</button>`+(m==='login'?`<button onclick="S.mode='create';render()">Create teacher account</button><button onclick="S.mode='forgot';render()">Forgot password?</button>`:`<button onclick="S.mode='login';render()">Back</button>`)+'</div></div>'}
+function students(){const t=S.tmp,n=S.students.length;
+return(t?`<div class="card"><h2>New password for ${esc(t.name)}</h2><p>Username: <b>${esc(t.username)}</b></p><p class="q" style="font-size:26px;letter-spacing:2px" dir="ltr">${esc(t.password)}</p><p class="mu">Tell the student this password. It will not be shown again.</p><button class="pri" onclick="S.tmp=null;render()">Done</button></div>`:'')+
+`<div style="display:flex;justify-content:space-between;align-items:center;gap:10px"><h1>Students</h1><button class="sm" onclick="loadStudents()">Refresh</button></div>`+
+(n?`<p class="mu" style="margin-top:-8px">${n} student account${n>1?'s':''}</p>`+S.students.map(x=>`<div class="card" style="display:flex;justify-content:space-between;align-items:center;gap:10px;box-shadow:none"><span><b>${esc(x.name)}</b><br><span class="mu">@${esc(x.username)}</span></span><button class="sm" onclick="resetPw(${x.id})" aria-label="Reset password for ${esc(x.name)}">Reset password</button></div>`).join(''):'<div class="card"><p class="mu">No student accounts yet. Students create their own on the student page.</p></div>')}
 function toast(m){const e=document.createElement('div');e.className='toast';e.textContent=m;document.body.append(e);setTimeout(()=>e.remove(),4500)}
-function go(t){S.tab=t;S.sel=null;render();scrollTo(0,0)}
+function go(t){if(t==='stu')loadStudents();S.tab=t;S.sel=null;render();scrollTo(0,0)}
 $('#nv').onclick=e=>{const b=e.target.closest('button.tab');if(b)go(b.dataset.t)};
 $('#th').onclick=()=>{const r=document.documentElement,dark=r.dataset.theme?r.dataset.theme==='dark':matchMedia('(prefers-color-scheme:dark)').matches;r.dataset.theme=dark?'light':'dark';$('#th').textContent=dark?'Dark mode':'Light mode'};
 function render(){
-const pend=S.subs.filter(s=>s.status!=='Marked').length,T=S.auth?[['upload','Upload'],['dash','Dashboard'+(pend?' ('+pend+')':'')]]:[];
-$('#nv').innerHTML=T.map(([t,l])=>`<button class="tab" role="tab" data-t="${t}" aria-selected="${S.auth?S.tab===t:(t==='student')===(S.tab==='student')}">${l}</button>`).join('')+(S.auth?'<button class="sm" onclick="lock()" style="flex:none">🔒 Lock</button>':'');
-$('#app').innerHTML=!S.auth?gate():S.tab==='upload'?upload():dash();
+const pend=S.subs.filter(s=>s.status!=='Marked').length,T=S.auth?[['upload','Upload'],['dash','Dashboard'+(pend?' ('+pend+')':'')],['stu','Students']]:[];
+$('#nv').innerHTML=T.map(([t,l])=>`<button class="tab" role="tab" data-t="${t}" aria-selected="${S.auth?S.tab===t:(t==='student')===(S.tab==='student')}">${l}</button>`).join('')+(S.auth?'<button class="sm" onclick="lock()" style="flex:none">🔒 Sign out</button>':'');
+$('#app').innerHTML=!S.auth?gate():S.tab==='upload'?upload():S.tab==='stu'?students():dash();
 document.querySelectorAll('#app .q,#app .cell,#app textarea,#app input[type=text],#app .opt').forEach(e=>e.setAttribute('dir','auto'));
 if(S.tab==='upload')bindDrop()}
 async function rmWs(id){if(!S.auth)return;const old=S.wss;S.wss=S.wss.filter(x=>x.id!==id);if(!await saveWss()){S.wss=old;return}render();toast('Removed')}
@@ -165,7 +185,7 @@ const w={id:Date.now(),title:S.D.title,q:S.D.q};S.wss.push(w);if(!await saveWss(
 const fmt=t=>new Date(t).toLocaleString([], {month:'short',day:'numeric',hour:'numeric',minute:'2-digit'});
 function dash(){if(S.sel)return grade(S.subs.find(s=>s.id===S.sel));
 if(!S.subs.length)return'<div style="display:flex;justify-content:space-between;align-items:center;gap:10px"><h1>Submissions</h1><button class="sm" onclick="refresh()">Refresh</button></div><div class="card"><h2>No submissions yet</h2><p class="mu">When a student submits from the student page, their work shows up here.</p></div>';
-return'<div style="display:flex;justify-content:space-between;align-items:center;gap:10px"><h1>Submissions</h1><button class="sm" onclick="refresh()">Refresh</button></div>'+S.subs.map(s=>`<button class="row card" onclick="S.sel=${s.id};render()"><span><b>${esc(s.name)}</b><br><span class="mu">${esc(s.ws.title)} · ${fmt(s.ts)}</span></span><span class="badge ${s.status==='Marked'?'b-m':'b-p'}">${s.status}${s.status==='Marked'?' · '+s.score+'/'+total(s.ws):''}</span></button>`).join('')}
+return'<div style="display:flex;justify-content:space-between;align-items:center;gap:10px"><h1>Submissions</h1><button class="sm" onclick="refresh()">Refresh</button></div>'+S.subs.map(s=>`<button class="row card" onclick="S.sel=${s.id};render()"><span><b>${esc(s.name)}</b>${s.username?' <span class="mu">@'+esc(s.username)+'</span>':''}<br><span class="mu">${esc(s.ws.title)} · ${fmt(s.ts)}</span></span><span class="badge ${s.status==='Marked'?'b-m':'b-p'}">${s.status}${s.status==='Marked'?' · '+s.score+'/'+total(s.ws):''}</span></button>`).join('')}
 function grade(s){if(!s){S.sel=null;return dash()}
 let auto=0;const body=s.ws.q.map((q,i)=>{const a=s.ans[i];let st,cr;
 if(q.t==='mc'){const ok=a===q.a;if(ok)auto++;st=`<div class="cell ${a==null?'bad':ok?'good':'bad'}"><b>Student chose</b>${a==null?'(no answer)':esc(q.o[a])}</div>`;cr=`<div class="cell"><b>Correct answer</b>${esc(q.o[q.a])}</div>`}
@@ -182,7 +202,6 @@ if(isNaN(v)||v<0||v>mx){toast('Enter a score from 0 to '+mx);return}
 try{const j=await api('grade',{id,score:v,fb:$('#fb').value});Object.assign(s,j.sub);S.sel=null;render();toast('Grade saved')}catch(e){toast('Could not save: '+e.message)}}
 async function refresh(){await loadState();render();toast('Updated')}
 setInterval(async()=>{if(S.auth&&S.tab==='dash'&&!S.sel&&!document.hidden){await loadState(true);if(S.auth&&S.tab==='dash'&&!S.sel)render()}},15000);
-health();
-loadState().then(()=>{S.tab=S.subs.some(x=>x.status!=='Marked')?'dash':'upload';render()});
+health();if(S.auth)loadState().then(()=>{S.tab=S.subs.some(x=>x.status!=='Marked')?'dash':'upload';render()});
 render();
 </script></body></html>

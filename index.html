@@ -47,33 +47,57 @@ textarea{min-height:100px;resize:vertical}
 .tick{font-size:48px}
 .toast{max-width:90vw;text-align:center;position:fixed;left:50%;bottom:calc(20px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);background:var(--tx);color:var(--bg);padding:10px 18px;border-radius:8px;z-index:30}
 </style></head><body>
-<header><div class="bar"><span class="logo">✏️ Worksheet Desk</span><button id="th" class="sm" aria-label="Toggle light or dark theme">Dark mode</button></div></header>
+<header><div class="bar"><span class="logo">✏️ Worksheet Desk</span><span id="who" class="mu"></span><button id="so" class="sm" hidden onclick="signOut('Signed out')">Sign out</button><button id="th" class="sm" aria-label="Toggle light or dark theme">Dark mode</button></div></header>
 <main id="app"></main><div id="ov"></div>
 <script>
 const $=s=>document.querySelector(s),esc=s=>String(s==null?'':s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
-const S={pub:[],loaded:false,err:'',cur:null,done:{},A:{},name:''};
+const ss={get:k=>{try{return sessionStorage.getItem(k)}catch(e){return null}},set:(k,v)=>{try{v==null?sessionStorage.removeItem(k):sessionStorage.setItem(k,v)}catch(e){}}};
+const S={token:ss.get('wds_t')||'',user:null,mode:'login',pub:[],done:{},loaded:false,err:'',cur:null,A:{}};
+try{S.user=JSON.parse(ss.get('wds_u')||'null')}catch(e){}
+if(!S.user||S.user.role!=='student')S.token='',S.user=null;
+let LAST=Date.now();
 function toast(m){const e=document.createElement('div');e.className='toast';e.textContent=m;document.body.append(e);setTimeout(()=>e.remove(),4500)}
 $('#th').onclick=()=>{const r=document.documentElement,dark=r.dataset.theme?r.dataset.theme==='dark':matchMedia('(prefers-color-scheme:dark)').matches;r.dataset.theme=dark?'light':'dark';$('#th').textContent=dark?'Dark mode':'Light mode'};
-async function load(manual){try{const r=await fetch('/api/server?a=worksheets',{cache:'no-store'});if(!r.ok)throw 0;S.pub=(await r.json()).worksheets||[];S.err=''}catch(e){S.err='Cannot reach the server. Check your internet and try again.'}
+async function post(a,payload){const r=await fetch('/api/server?a='+a,{method:'POST',headers:{'Content-Type':'application/json',...(S.token?{Authorization:'Bearer '+S.token}:{})},body:JSON.stringify(payload||{}),cache:'no-store'});
+const j=await r.json().catch(()=>({}));if(!r.ok){if(r.status===401&&S.token)signOut('Please sign in again.');throw Error(j.error||'Request failed')}return j}
+function signOut(msg){S.token='';S.user=null;S.pub=[];S.done={};S.loaded=false;S.cur=null;S.A={};S.mode='login';ss.set('wds_t',null);ss.set('wds_u',null);render();scrollTo(0,0);if(msg)toast(msg)}
+const f=(id,l,t,ac,x)=>`<label class="q" for="${id}" style="display:block;margin-top:12px">${l}</label><input type="${t}" id="${id}" autocomplete="${ac}" ${x||''}>`;
+function authView(){const c=S.mode==='create';
+return`<div class="card"><h1>${c?'Create your account':'Sign in'}</h1><p class="mu">${c?'Use your real name so your teacher knows who you are.':'Sign in with your worksheet account to see your worksheets.'}</p>`+
+(c?f('an','Your name','text','name'):'')+f('au','Username','text','username','autocapitalize="none" spellcheck="false"')+f('ap','Password'+(c?' (6+ characters)':''),'password',c?'new-password':'current-password')+(c?f('ap2','Confirm password','password','new-password'):'')+
+`<div class="actions" style="margin-top:14px"><button class="pri" id="ab" onclick="auth()">${c?'Create account':'Sign in'}</button><button onclick="S.mode='${c?'login':'create'}';render()">${c?'I already have an account':'Create an account'}</button></div><p class="mu" style="margin-top:12px">Forgot your password? Ask your teacher to reset it.</p></div>`}
+async function auth(){const c=S.mode==='create',un=$('#au').value.trim(),pw=$('#ap').value;
+if(!un||!pw){toast('Enter your username and password');return}
+if(c){if(!$('#an').value.trim()){toast('Enter your name');return}if(pw!==$('#ap2').value){toast('The two passwords do not match');return}}
+const b=$('#ab');b.disabled=true;
+try{const j=await post(c?'register':'login',c?{role:'student',name:$('#an').value,username:un,password:pw}:{as:'student',username:un,password:pw});
+S.token=j.token;S.user=j.user;ss.set('wds_t',j.token);ss.set('wds_u',JSON.stringify(j.user));LAST=Date.now();S.loaded=false;render();load()}
+catch(e){toast(e.message==='Failed to fetch'?'No connection. Try again.':e.message);const bb=$('#ab');if(bb)bb.disabled=false}}
+addEventListener('keydown',e=>{LAST=Date.now();if(e.key==='Enter'&&['an','au','ap','ap2'].includes(e.target.id))auth()});
+addEventListener('pointerdown',()=>{LAST=Date.now()});
+async function load(manual){if(!S.token)return;try{const j=await post('worksheets');S.pub=j.worksheets||[];S.done={};(j.done||[]).forEach(id=>S.done[id]=1);S.err=''}
+catch(e){if(!S.token)return;S.err=e.message==='Failed to fetch'?'Cannot reach the server. Check your internet and try again.':e.message}
 S.loaded=true;if(S.cur&&!S.pub.find(x=>x.id===S.cur))S.cur=null;if(!S.cur)render();if(manual&&!S.err)toast('Updated')}
-function render(){$('#app').innerHTML=student();document.querySelectorAll('#app .q,#app textarea,#app input[type=text],#app .opt').forEach(e=>e.setAttribute('dir','auto'))}
-function student(){if(!S.loaded)return'<div class="card" role="status"><h2>Loading worksheets…</h2></div>';
+function render(){$('#who').textContent=S.user?S.user.name:'';$('#so').hidden=!S.user;$('#app').innerHTML=student();
+document.querySelectorAll('#app .q,#app textarea,#app .opt').forEach(e=>e.setAttribute('dir','auto'))}
+function student(){if(!S.token)return authView();
+if(!S.loaded)return'<div class="card" role="status"><h2>Loading worksheets…</h2></div>';
 if(S.err&&!S.pub.length)return`<div class="card"><h1>No connection</h1><p>${esc(S.err)}</p><button class="pri" onclick="load(true)">Try again</button></div>`;
 const n=S.pub.length;if(!n)return'<div class="card"><h1>No worksheets yet</h1><p>Your teacher hasn\'t published a worksheet yet. Check back soon.</p><button class="pri" onclick="load(true)">Refresh</button></div>';
 const w=S.pub.find(x=>x.id===S.cur);
 if(!w)return`<div style="display:flex;justify-content:space-between;align-items:center;gap:10px"><h1>Choose a worksheet</h1><button class="sm" onclick="load(true)">Refresh</button></div><p class="mu" style="margin-top:-8px">${n} worksheet${n>1?'s':''} available</p>`+S.pub.map(x=>{const mc=x.q.filter(q=>q.t==='mc').length;
 return`<button class="row card" onclick="openWs(${x.id})"><span><b>${esc(x.title)}</b><br><span class="mu">${x.q.length} question${x.q.length>1?'s':''} · ${mc} multiple choice · ${x.q.length-mc} written</span></span><span class="badge ${S.done[x.id]?'b-m':'b-p'}">${S.done[x.id]?'Submitted':'Start'}</span></button>`}).join('');
-return`<button class="sm" onclick="S.cur=null;S.A={};render()" style="margin-bottom:10px">← All worksheets</button><h1>${esc(w.title)}</h1><div class="card"><label for="nm" class="q">Your name</label><input type="text" id="nm" value="${esc(S.name)}" oninput="S.name=this.value" autocomplete="name"></div>`+
+return`<button class="sm" onclick="S.cur=null;S.A={};render()" style="margin-bottom:10px">← All worksheets</button><h1>${esc(w.title)}</h1><p class="mu" style="margin-top:-8px">Submitting as <b>${esc(S.user.name)}</b></p>`+
 w.q.map((q,i)=>`<div class="card"><p class="q">${i+1}. ${esc(q.q)}</p>`+(q.t==='mc'?q.o.map((o,j)=>`<label class="opt"><input type="radio" name="q${i}" ${S.A[i]===j?'checked':''} onchange="S.A[${i}]=${j}"> ${esc(o)}</label>`).join(''):`<textarea aria-label="Answer to question ${i+1}" placeholder="Type your answer here" oninput="S.A[${i}]=this.value">${esc(S.A[i]||'')}</textarea>`)+'</div>').join('')+
 '<button class="pri" id="sb" style="width:100%" onclick="submitWs()">Submit worksheet</button>'}
 function openWs(id){S.cur=id;S.A={};render();scrollTo(0,0)}
-async function submitWs(){const n=S.name.trim();if(!n){toast('Enter your name first');$('#nm').focus();return}
-const w=S.pub.find(x=>x.id===S.cur);if(!w)return;const b=$('#sb');b.disabled=true;b.textContent='Sending…';
-try{const r=await fetch('/api/server?a=submit',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({wid:w.id,name:n,ans:S.A})});const j=await r.json().catch(()=>({}));if(!r.ok)throw Error(j.error||'Could not send');
-S.done[S.cur]=1;S.cur=null;S.A={};S.name='';render();
+async function submitWs(){const w=S.pub.find(x=>x.id===S.cur);if(!w)return;const b=$('#sb');b.disabled=true;b.textContent='Sending…';
+try{await post('submit',{wid:w.id,ans:S.A});
+S.done[S.cur]=1;S.cur=null;S.A={};render();
 $('#ov').innerHTML='<div class="modal" role="dialog" aria-modal="true" aria-labelledby="mt"><div class="card"><div class="tick">✅</div><h2 id="mt">Submitted successfully</h2><p class="mu">Your teacher can now see your answers.</p><button class="pri" id="okb">Done</button></div></div>';
 $('#okb').focus();$('#okb').onclick=()=>{$('#ov').innerHTML=''}}
-catch(e){toast(e.message==='Failed to fetch'?'No connection. Your answers are still here. Try again.':e.message);b.disabled=false;b.textContent='Submit worksheet'}}
-setInterval(()=>{if(!document.hidden&&!S.cur)load()},30000);
-load();
+catch(e){if(!S.token)return;toast(e.message==='Failed to fetch'?'No connection. Your answers are still here. Try again.':e.message);b.disabled=false;b.textContent='Submit worksheet'}}
+setInterval(()=>{if(S.token&&Date.now()-LAST>12e5)signOut('Signed out after 20 minutes of inactivity')},15000);
+setInterval(()=>{if(S.token&&S.loaded&&!document.hidden&&!S.cur)load()},30000);
+render();if(S.token)load();
 </script></body></html>
