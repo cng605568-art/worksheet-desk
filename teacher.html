@@ -116,7 +116,7 @@ async function rmWs(id){if(!S.auth)return;const old=S.wss;S.wss=S.wss.filter(x=>
 function upload(){
 if(S.up==='busy')return'<div class="card" style="text-align:center;padding:50px 16px" role="status"><div class="spin"></div><h2>AI converting worksheet to digital format…</h2><p class="mu" id="bm">Reading questions and finding answer choices.</p></div>';
 if(S.up==='review'&&S.D)return review();
-return`<h1>Upload a worksheet</h1><div class="drop" id="dz"><div style="font-size:40px">📄</div><p class="q">Drag a PDF here or tap to browse</p><p class="mu">The AI turns it into multiple-choice and written questions you can review. Scanned PDFs and photos are read with text recognition.</p><p class="mu" style="margin:12px 0 4px">Worksheet language (used for scanned PDFs)</p><select id="lg" aria-label="Worksheet language" onchange="S.lang=this.value">${LG.map(l=>`<option value="${l[0]}" ${S.lang===l[0]?'selected':''}>${l[1]}</option>`).join('')}</select><div class="actions" style="margin-top:14px" style="justify-content:center"><button class="pri" id="bb">Choose PDF</button><button id="sb">Try a sample</button></div><input type="file" id="fi" accept=".pdf,application/pdf" style="position:absolute;width:1px;height:1px;opacity:0;pointer-events:none" tabindex="-1" aria-hidden="true"></div>`+(S.wss.length?`<h2 style="margin-top:20px">Published worksheets (${S.wss.length})</h2>`+S.wss.map(w=>`<div class="card" style="display:flex;justify-content:space-between;align-items:center;gap:10px;box-shadow:none"><span><b>${esc(w.title)}</b><br><span class="mu">${w.q.length} questions</span></span><button class="sm" onclick="rmWs(${w.id})" aria-label="Remove ${esc(w.title)}">Remove</button></div>`).join(''):'<p class="mu">No worksheets published yet.</p>')}
+return`<h1>Upload a worksheet</h1><div class="drop" id="dz"><div style="font-size:40px">📄</div><p class="q">Drag a PDF here or tap to browse</p><p class="mu">Extract questions and reading comprehension passages (文章 / petikan) from PDFs in English or Bahasa Melayu. Review all extracted text before publishing.</p><p class="mu" style="margin:12px 0 4px">Worksheet language (used for scanned PDFs)</p><select id="lg" aria-label="Worksheet language" onchange="S.lang=this.value">${LG.map(l=>`<option value="${l[0]}" ${S.lang===l[0]?'selected':''}>${l[1]}</option>`).join('')}</select><div class="actions" style="margin-top:14px" style="justify-content:center"><button class="pri" id="bb">Choose PDF</button><button id="sb">Try a sample</button></div><input type="file" id="fi" accept=".pdf,application/pdf" style="position:absolute;width:1px;height:1px;opacity:0;pointer-events:none" tabindex="-1" aria-hidden="true"></div>`+(S.wss.length?`<h2 style="margin-top:20px">Published worksheets (${S.wss.length})</h2>`+S.wss.map(w=>`<div class="card" style="display:flex;justify-content:space-between;align-items:center;gap:10px;box-shadow:none"><span><b>${esc(w.title)}</b><br><span class="mu">${w.q.length} questions</span></span><button class="sm" onclick="rmWs(${w.id})" aria-label="Remove ${esc(w.title)}">Remove</button></div>`).join(''):'<p class="mu">No worksheets published yet.</p>')}
 function bindDrop(){const dz=$('#dz'),fi=$('#fi');if(!dz)return;
 dz.ondragover=e=>{e.preventDefault();dz.classList.add('over')};dz.ondragleave=()=>dz.classList.remove('over');
 dz.ondrop=e=>{e.preventDefault();dz.classList.remove('over');pick(e.dataTransfer.files[0])};
@@ -133,8 +133,8 @@ const pdfOpts=async f=>({data:await f.arrayBuffer(),cMapUrl:PB+'cmaps/',cMapPack
 function loadPdfJs(){return(window.pdfjsLib?Promise.resolve():new Promise((ok,no)=>{const s=document.createElement('script');s.src=PB+'build/pdf.min.js';s.onload=ok;s.onerror=()=>no(Error('Could not load the PDF reader. Check your internet connection.'));document.head.append(s)})).then(()=>{pdfjsLib.GlobalWorkerOptions.workerSrc=PB+'build/pdf.worker.min.js'})}
 const DG=d=>{let c=d.codePointAt(0),b=c;while(/\p{Nd}/u.test(String.fromCodePoint(b-1)))b--;return(c-b)%10};
 const norm=l=>l.replace(/[\u2460-\u2467]/g,c=>' '+'ABCDEFGH'[c.charCodeAt(0)-9312]+') ').normalize('NFKC').replace(/[\u200e\u200f\u202a-\u202e\u2066-\u2069]/g,'').replace(/\p{Nd}/gu,DG).replace(/\s+/g,' ').trim();
-const LG=[['eng','English'],['chi_sim','简体中文 (Chinese Simplified)'],['chi_tra','繁體中文 (Chinese Traditional)'],['jpn','日本語 (Japanese)'],['kor','한국어 (Korean)'],['ara','العربية (Arabic)'],['heb','עברית (Hebrew)'],['rus','Русский (Russian)'],['ell','Ελληνικά (Greek)'],['hin','हिन्दी (Hindi)'],['spa','Español'],['fra','Français'],['deu','Deutsch'],['por','Português'],['ita','Italiano'],['tur','Türkçe']];
-{const d=(navigator.language||'en').toLowerCase();S.lang=/zh-(tw|hk|hant)/.test(d)?'chi_tra':d.startsWith('zh')?'chi_sim':({ja:'jpn',ko:'kor',ar:'ara',he:'heb',ru:'rus',el:'ell',hi:'hin',es:'spa',fr:'fra',de:'deu',pt:'por',it:'ita',tr:'tur'}[d.slice(0,2)]||'eng')}
+const LG=[['eng','English'],['msa','Bahasa Melayu'],['chi_sim','简体中文 (Chinese Simplified)'],['chi_tra','繁體中文 (Chinese Traditional)'],['jpn','日本語 (Japanese)'],['kor','한국어 (Korean)'],['ara','العربية (Arabic)'],['heb','עברית (Hebrew)'],['rus','Русский (Russian)'],['ell','Ελληνικά (Greek)'],['hin','हिन्दी (Hindi)'],['spa','Español'],['fra','Français'],['deu','Deutsch'],['por','Português'],['ita','Italiano'],['tur','Türkçe']];
+{const d=(navigator.language||'en').toLowerCase();S.lang=/zh-(tw|hk|hant)/.test(d)?'chi_tra':d.startsWith('zh')?'chi_sim':({ms:'msa',ja:'jpn',ko:'kor',ar:'ara',he:'heb',ru:'rus',el:'ell',hi:'hin',es:'spa',fr:'fra',de:'deu',pt:'por',it:'ita',tr:'tur'}[d.slice(0,2)]||'eng')}
 const say=t=>{const e=$('#bm');if(e)e.textContent=t};
 const CJK='(\\p{Script=Han}|[\\u3040-\\u30ff\\uac00-\\ud7af])',CJR=new RegExp(CJK+'\\s+(?='+CJK.slice(1,-1).replace(/^/,'')+')','gu');
 function loadScript(u,flag){return window[flag]?Promise.resolve():new Promise((ok,no)=>{const s=document.createElement('script');s.src=u;s.onload=ok;s.onerror=()=>no(Error('Could not load the text recognition engine. Check your internet connection.'));document.head.append(s)})}
@@ -151,16 +151,16 @@ tc.items.forEach(it=>{if(!it.str)return;const y=Math.round(it.transform[5]/4);(r
 Object.keys(rows).map(Number).sort((a,b)=>b-a).forEach(y=>{let r=rows[y];if(!r.some(i=>i.dir==='rtl'))r=r.slice().sort((a,b)=>a.transform[4]-b.transform[4]);out.push(norm(r.map(i=>i.str).join(' ')))});pages.push(out.filter(Boolean))}
 const cnt={},k=l=>l.replace(/\d+/g,'#');pages.forEach(pl=>new Set(pl.map(k)).forEach(x=>cnt[x]=(cnt[x]||0)+1));
 return pages.flat().filter(l=>pages.length<2||cnt[k(l)]<2)}
-const KEY='(?:correct\\s+)?(?:answers?|ans|key|respuesta|r[ée]ponse|antwort|l[öo]sung|resposta|risposta|jawaban|cevap|odpowied[zź]|antwoord|ответ|απάντηση|答案|答え|解答|정답|उत्तर|الإجابة|الاجابة|תשובה)';
+const KEY='(?:correct\\s+)?(?:answers?|ans|key|jawapan(?:\\s+betul)?|skema\\s+jawapan|respuesta|r[ée]ponse|antwort|l[öo]sung|resposta|risposta|jawaban|cevap|odpowied[zź]|antwoord|ответ|απάντηση|答案|答え|解答|정답|उत्तर|الإجابة|الاجابة|תשובה)';
 function parse(lines,name){const QR=/^(?:\p{L}{1,8}\.?\s*)?(\d{1,3})\s*[題题問号號番]?\s*[.)\]:、。]\s*(.+)/u,
 OS='(?:[.)、]\\s+|[.)、](?=[^\\x00-\\x7F]))',OR=new RegExp('(?:^|\\s)\\(?(\\p{L})'+OS,'u'),OL=new RegExp('^\\(?\\p{L}'+OS,'u'),AR=new RegExp('^'+KEY+'\\s*[:\\-]\\s*(.+)','iu'),KR=new RegExp(KEY,'iu'),
 NK=/(\d{1,3})\s*[.)、:\-]?\s*([A-Da-d])(?![\p{L}\p{Nd}])/gu,END=/[:?؟。.!)_]\s*$/;
-const qs=[],km={};let cur=null,title='',m;
+const qs=[],km={},intro=[];let cur=null,title='',m;
 for(const l of lines){
 if(/^[_\-.…—\s]{3,}$/.test(l))continue;
 if(m=l.match(QR)){cur={n:m[1],q:m[2],o:[],lab:[],txt:'',key:null};qs.push(cur);continue}
 if(KR.test(l)){const k=[...l.matchAll(NK)];if(k.length>=2){k.forEach(x=>km[x[1]]=x[2].toLowerCase());cur=null;continue}}
-if(!cur){if(!title&&l.length<90&&!/(name|date|nombre|fecha|nom|datum|имя|дата|名前|姓名|日期|이름|الاسم|التاريخ)\s*:/iu.test(l))title=l;continue}
+if(!cur){if(!title&&l.length<90&&!/[.!?。！？]$/.test(l)&&!/(name|date|nama|tarikh|nombre|fecha|nom|datum|имя|дата|名前|姓名|日期|이름|الاسم|التاريخ)\s*:/iu.test(l))title=l;else intro.push(l);continue}
 if(m=l.match(AR)){const t=m[1].trim(),k=t.match(/^\(?(\p{L})(?![\p{L}\p{Nd}])/u);cur.key=k?k[1].toLowerCase():null;cur.txt=t;continue}
 if(OL.test(l)){const p=l.split(OR),f=p[1].toLowerCase(),a=cur.lab[cur.lab.length-1],
 ok=cur.o.length?(/[a-z]/.test(a)&&/[a-z]/.test(f)?f.charCodeAt(0)===a.charCodeAt(0)+1:true):(/[a-z]/.test(f)?f==='a':true);
@@ -170,10 +170,10 @@ if(cur.o.length)cur.o[cur.o.length-1]+=' '+l;else if(!END.test(cur.q))cur.q+=' '
 const cl=t=>t.replace(/_{2,}/g,'').replace(/\s+/g,' ').trim();
 let q=qs.map(x=>{if(x.o.length>=2){const k=x.key!=null?x.key:km[x.n]!=null?km[x.n]:null;let a=k!=null?x.lab.indexOf(k):-1;if(a<0&&x.txt)a=x.o.findIndex(o=>o.toLowerCase()===x.txt.toLowerCase());return{t:'mc',q:cl(x.q),o:x.o,a}}return{t:'tx',q:cl(x.q),a:x.txt}});
 if(!q.length)q=lines.filter(l=>/[?؟]\s*$/.test(l)).map(l=>({t:'tx',q:l,a:''}));
-return{title:(title||name).slice(0,80),q}}
+return{title:(title||name).slice(0,80),lang:S.lang==='msa'?'ms':'en',passage:intro.join('\n').slice(0,20000),q}}
 function review(){const D=S.D;
 return`<h1>Review digital version</h1><p class="mu">Edit anything the AI got wrong, mark the correct answers, then publish.</p>
-<div class="card"><label class="q" for="wt">Worksheet title</label><input type="text" id="wt" value="${esc(D.title)}" oninput="S.D.title=this.value"></div>`+
+<div class="card"><label class="q" for="wt">Worksheet title / Tajuk lembaran kerja</label><input type="text" id="wt" value="${esc(D.title)}" oninput="S.D.title=this.value"><label class="q" for="wl" style="display:block;margin-top:12px">Worksheet language / Bahasa</label><select id="wl" onchange="S.D.lang=this.value"><option value="en" ${D.lang!=='ms'?'selected':''}>English</option><option value="ms" ${D.lang==='ms'?'selected':''}>Bahasa Melayu</option></select></div><div class="card"><label class="q" for="passage">Reading comprehension passage / Petikan kefahaman (文章)</label><p class="mu">Students will see this passage above the questions. Check that the extracted text is complete and correct.</p><textarea id="passage" style="min-height:190px" placeholder="Paste or edit the reading passage here / Tampal petikan di sini" oninput="S.D.passage=this.value">${esc(D.passage||'')}</textarea></div>`+
 D.q.map((q,i)=>`<div class="card" id="question-${i}"><div style="display:flex;justify-content:space-between;align-items:center"><span class="badge b-p">${q.t==='mc'?'Multiple choice':'Written sentences'}</span><button class="sm" onclick="S.D.q.splice(${i},1);render()" aria-label="Delete question ${i+1}">Delete</button></div>
 <textarea style="min-height:70px;margin:10px 0" aria-label="Question ${i+1} text" oninput="S.D.q[${i}].q=this.value">${esc(q.q)}</textarea>`+
 (q.t==='mc'?q.o.map((o,j)=>`<div class="opt edit"><input type="radio" name="c${i}" ${q.a===j?'checked':''} onchange="S.D.q[${i}].a=${j}" aria-label="Mark option ${j+1} correct"><input type="text" value="${esc(o)}" oninput="S.D.q[${i}].o[${j}]=this.value" aria-label="Option ${j+1}"></div>`).join('')+`<button class="sm" onclick="S.D.q[${i}].o.push('New option');render()">+ Add option</button><button class="sm" style="margin-left:8px" onclick="S.D.q[${i}]={t:'tx',q:S.D.q[${i}].q,a:''};render()">Change to written question</button><p class="mu">Select the radio button next to the correct answer. If students should type an answer instead, choose Change to written question.</p>`:
@@ -191,7 +191,7 @@ if(missing!==-1){
   }
   toast('Please check question '+(missing+1)+' above');return;
 }
-const w={id:Date.now(),title:S.D.title,q:S.D.q};S.wss.push(w);if(!await saveWss()){S.wss.pop();return}S.D=null;S.up='idle';toast('Published');render();scrollTo(0,0)}
+const w={id:Date.now(),title:S.D.title,lang:S.D.lang||'en',passage:S.D.passage||'',q:S.D.q};S.wss.push(w);if(!await saveWss()){S.wss.pop();return}S.D=null;S.up='idle';toast('Published');render();scrollTo(0,0)}
 /* DASHBOARD */
 const fmt=t=>new Date(t).toLocaleString([], {month:'short',day:'numeric',hour:'numeric',minute:'2-digit'});
 function dash(){if(S.sel)return grade(S.subs.find(s=>s.id===S.sel));
