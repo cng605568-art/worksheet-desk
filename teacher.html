@@ -226,6 +226,49 @@ function suggestMalay(q,passage){
  }
  const uniq=[...new Set(found.map(x=>x.a))];return uniq.length===1?found.find(x=>x.a===uniq[0]):null;
 }
+// Local Malay grammar: penjodoh bilangan. Exact noun/classifier matches only.
+// This is an offline rule engine, NOT a general-purpose Malay language model.
+const MS_CLASSIFIERS={
+ sikat:['pisang'],biji:['epal','oren','mangga','telur','bola','guli','rumah','kereta','komputer','telefon','jam','basikal'],
+ batang:['pokok','pensel','pen','rokok','lilin','buluh','kayu','sungai','jalan'],
+ helai:['kertas','baju','kain','seluar','tuala','daun','rambut','tisu','surat'],
+ buah:['rumah','kereta','bangunan','sekolah','meja','kerusi','kapal','komputer','telefon'],
+ ekor:['kucing','anjing','ayam','burung','ikan','lembu','kambing','gajah','harimau'],
+ orang:['murid','guru','doktor','pekerja','pelajar','lelaki','wanita','kanak kanak'],
+ kuntum:['bunga','mawar','melur','orkid'],
+ pasang:['kasut','stoking','sarung tangan','anting anting'],
+ naskhah:['buku','majalah','akhbar','novel','surat khabar'],
+ bilah:['pisau','parang','pedang','keris','gunting'],
+ keping:['roti','gambar','syiling','kad','papan'],
+ gugus:['anggur','kunci'],
+ tandan:['kelapa','sawit','kurma'],
+ utas:['rantai','tali','kalung'],
+ pucuk:['surat','senapang'],
+ kaki:['payung','meja','kerusi'],
+ titik:['air','dakwat'],
+ butir:['beras','gula','pasir','mutiara']
+};
+function offlineMalay(q,passage){
+ const old=suggestMalay(q,passage);
+ if(!q||q.t!=='mc'||!Array.isArray(q.o))return null;
+ const opts=q.o.map(msNorm),prompt=msNorm(q.q);
+ // A gap can be written as se___, se_____, or se pisang after PDF extraction.
+ const hasGap=/\bse\s*[_….-]*\s+|\bse[_….-]+|\bse\s+/iu.test(q.q);
+ if(hasGap){
+  const matches=[];
+  for(const [classifier,nouns] of Object.entries(MS_CLASSIFIERS)){
+   const choice=opts.indexOf(classifier);if(choice<0)continue;
+   for(const noun of nouns){
+    const pattern=new RegExp('\\b'+noun.replace(/ /g,'\\s+')+'\\b','iu');
+    if(pattern.test(prompt)){matches.push({a:choice,why:'Penjodoh bilangan: “'+classifier+'” for “'+noun+'”.',confidence:'high'});break}
+   }
+  }
+  const unique=[...new Set(matches.map(x=>x.a))];
+  if(unique.length===1)return matches.find(x=>x.a===unique[0]);
+  // Ambiguous counters (e.g., both gugus and sikat for pisang) must not be guessed.
+ }
+ return old;
+}
 // Gemini suggestions are optional. Uncertain answers remain for teacher review.
 async function geminiSuggest(index=null){
  if(!S.auth || !S.D)return;
@@ -250,20 +293,52 @@ async function geminiSuggest(index=null){
  }
  render();toast('Gemini suggested '+changed+' answer(s). '+(uncertain?uncertain+' uncertain. ':'')+'Please review before publishing.');
 }
+// One tap checks EVERY question with Gemini. Never silently changes teacher-selected answers.
+let checkingAll=false;
+async function checkAllWithGemini(){
+ if(checkingAll||!S.auth||!S.D)return;
+ checkingAll=true;
+ let filled=0,review=0,uncertain=0;
+ const qs=S.D.q, indexes=qs.map((_,i)=>i);
+ const btn=document.getElementById('check-all-ai');if(btn){btn.disabled=true;btn.textContent='🤖 Checking all questions…'}
+ try{
+  for(let start=0;start<indexes.length;start+=25){
+   const slice=indexes.slice(start,start+25);
+   const result=await api('geminiAnswers',{passage:S.D.passage||'',questions:slice.map(i=>{const q=qs[i];return {t:q.t,q:q.q,...(q.t==='mc'?{o:q.o}:{})}})});
+   for(const a of result.answers||[]){
+    if(!Number.isInteger(a.index)||a.index<0||a.index>=slice.length)continue;
+    const i=slice[a.index],q=qs[i];if(!q)continue;
+    if(a.confidence==='low'){uncertain++;q.suggestion='Gemini is uncertain. Review manually.';continue}
+    const reason=String(a.reason||'').slice(0,220);
+    if(q.t==='mc'&&Number.isInteger(a.answerIndex)&&a.answerIndex>=0&&a.answerIndex<q.o.length){
+     if(Number.isInteger(q.a)&&q.a>=0&&q.a<q.o.length){
+      if(q.a!==a.answerIndex){review++;q.suggestion='⚠️ Teacher answer differs from Gemini suggestion: '+q.o[a.answerIndex]+'. '+reason}
+      else q.suggestion='Gemini agrees with the selected answer. '+reason;
+     }else{q.a=a.answerIndex;filled++;q.suggestion='Gemini ('+a.confidence+'): '+reason}
+    }else if(q.t==='tx'&&typeof a.modelAnswer==='string'&&a.modelAnswer.trim()){
+     if(String(q.a||'').trim()){q.suggestion='Gemini suggested model answer (compare with yours): '+a.modelAnswer.slice(0,350);review++}
+     else{q.a=a.modelAnswer;filled++;q.suggestion='Gemini ('+a.confidence+'): '+reason}
+    }else uncertain++;
+   }
+  }
+  render();toast('AI checked '+indexes.length+' questions: '+filled+' filled, '+review+' to review, '+uncertain+' uncertain. Verify before publishing.');
+ }catch(e){render();toast('AI check stopped: '+e.message+'; answers checked so far are kept.');}
+ finally{checkingAll=false;const b=document.getElementById('check-all-ai');if(b){b.disabled=false;b.textContent='🤖 AI: Check ALL questions'}}
+}
 function suggestOne(i){const q=S.D.q[i];if(!q||q.t!=='mc')return;
- const s=suggestMalay(q,S.D.passage);if(!s){toast('No reliable Malay suggestion for question '+(i+1)+'. Please select the answer yourself.');return}
+ const s=offlineMalay(q,S.D.passage);if(!s){toast('No reliable Malay suggestion for question '+(i+1)+'. Please select the answer yourself.');return}
  q.a=s.a;q.suggestion=s.why;render();toast('Suggested answer for question '+(i+1)+'. Please verify it before publishing.');
  document.getElementById('question-'+i)?.scrollIntoView({block:'center'});
 }
 function suggestAll(){let changed=0;
  for(let i=0;i<S.D.q.length;i++){const q=S.D.q[i];if(q.t!=='mc'||Number.isInteger(q.a)&&q.a>=0&&q.a<q.o.length)continue;
- const s=suggestMalay(q,S.D.passage);if(s){q.a=s.a;q.suggestion=s.why;changed++}}
+ const s=offlineMalay(q,S.D.passage);if(s){q.a=s.a;q.suggestion=s.why;changed++}}
  render();toast(changed?'Suggested '+changed+' answer(s). Review all suggestions before publishing.':'No reliable suggestions found. Select correct answers manually.');
 }
 function review(){const D=S.D;
 return`<h1>Review digital version</h1><p class="mu">Check extracted text and answers before publishing. Gemini can suggest answers from the passage, but the teacher must verify them.</p>
 <div class="card"><label class="q" for="wt">Worksheet title / Tajuk lembaran kerja</label><input type="text" id="wt" value="${esc(D.title)}" oninput="S.D.title=this.value"><label class="q" for="wl" style="display:block;margin-top:12px">Worksheet language / Bahasa</label><select id="wl" onchange="S.D.lang=this.value"><option value="en" ${D.lang!=='ms'?'selected':''}>English</option><option value="ms" ${D.lang==='ms'?'selected':''}>Bahasa Melayu</option></select></div><div class="card"><label class="q" for="passage">Reading comprehension passage / Petikan kefahaman (文章)</label><p class="mu">Students will see this passage above the questions. Check that the extracted text is complete and correct.</p><textarea id="passage" style="min-height:190px" placeholder="Paste or edit the reading passage here / Tampal petikan di sini" oninput="S.D.passage=this.value">${esc(D.passage||'')}</textarea></div>`+
-`<div class="actions" style="margin-bottom:12px"><button onclick="geminiSuggest()">🤖 Gemini: suggest missing answers</button><button onclick="suggestAll()">🇲🇾 Offline Malay suggestions</button><span class="mu">Suggestions require teacher review; uncertain questions are left blank.</span></div>`+
+`<div class="actions" style="margin-bottom:12px"><button class="pri" id="check-all-ai" onclick="checkAllWithGemini()">🤖 AI: Check ALL questions</button><button onclick="geminiSuggest()">🤖 Gemini: suggest missing answers</button><button onclick="suggestAll()">🇲🇾 Offline: Check missing Malay answers</button><span class="mu">Suggestions require teacher review; uncertain questions are left blank.</span></div>`+
 D.q.map((q,i)=>`<div class="card" id="question-${i}"><div style="display:flex;justify-content:space-between;align-items:center"><span class="badge b-p">${q.t==='mc'?'Multiple choice':'Written sentences'}</span><button class="sm" onclick="S.D.q.splice(${i},1);render()" aria-label="Delete question ${i+1}">Delete</button></div>
 <textarea style="min-height:70px;margin:10px 0" aria-label="Question ${i+1} text" oninput="S.D.q[${i}].q=this.value">${esc(q.q)}</textarea>`+
 (q.t==='mc'?q.o.map((o,j)=>`<div class="opt edit"><input type="radio" name="c${i}" ${q.a===j?'checked':''} onchange="S.D.q[${i}].a=${j}" aria-label="Mark option ${j+1} correct"><input type="text" value="${esc(o)}" oninput="S.D.q[${i}].o[${j}]=this.value" aria-label="Option ${j+1}"></div>`).join('')+`<button class="sm" onclick="S.D.q[${i}].o.push('New option');render()">+ Add option</button><button class="sm" style="margin-left:8px" onclick="S.D.q[${i}]={t:'tx',q:S.D.q[${i}].q,a:''};render()">Change to written question</button><button class="sm" style="margin-left:8px" onclick="geminiSuggest(${i})">🤖 Gemini answer</button><button class="sm" onclick="suggestOne(${i})">🇲🇾 Offline</button>${q.suggestion?`<p class="mu" role="status">⚠️ Suggested: ${esc(q.suggestion)} Please verify.</p>`:''}<p class="mu">Select the radio button next to the correct answer. If students should type an answer instead, choose Change to written question.</p>`:
