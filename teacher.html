@@ -248,26 +248,117 @@ const MS_CLASSIFIERS={
  titik:['air','dakwat'],
  butir:['beras','gula','pasir','mutiara']
 };
+// Deterministic offline Malay engine. No network, no API key, no claim of full AI comprehension.
+const MS_MORE_CLASSIFIERS={
+ rawan:['jaring'],ruas:['tebu','buluh','jari'],ulas:['durian','nangka','cempedak','limau'],
+ biji:['durian','manggis','betik','tembikai','nanas'],
+ sikat:['pisang'], sisir:['pisang'], tandan:['pisang','kelapa','sawit'],
+ batang:['tebu','pokok','penyapu','kayu'],
+ helai:['kertas','daun','baju','rambut','kain'],
+ keping:['roti','biskut','jubin','gambar','kaca'],
+ cebis:['kertas','kain'], ketul:['ais','batu','daging'],
+ ekor:['arnab','itik','ular','buaya','semut','rama rama'],
+ buah:['beg','telefon','komputer','bas','kereta','rumah'],
+ pasang:['kasut','selipar','sarung tangan','anting anting'],
+ kuntum:['bunga','mawar'], jambak:['bunga'],
+ utas:['rantai','tali'], gulung:['tikar','permaidani','kertas'],
+ naskhah:['buku','akhbar','majalah'], bilah:['pisau','parang','pedang'],
+ orang:['petani','nelayan','polis','tentera','jururawat'],
+ laras:['senapang','pistol'], pucuk:['surat','senapang'],
+ puntung:['rokok','kayu'], gugus:['anggur','kunci'],
+ papan:['coklat','petai'], cubit:['garam','gula']
+};
+const MS_OPPOSITES={besar:['kecil'],kecil:['besar'],tinggi:['rendah'],rendah:['tinggi'],
+ panjang:['pendek'],pendek:['panjang'],cepat:['lambat','perlahan'],lambat:['cepat','pantas'],
+ rajin:['malas'],malas:['rajin'],bersih:['kotor'],kotor:['bersih'],
+ panas:['sejuk'],sejuk:['panas'],gelap:['terang'],terang:['gelap'],
+ tebal:['nipis'],nipis:['tebal'],berat:['ringan'],ringan:['berat'],
+ mahal:['murah'],murah:['mahal'],gembira:['sedih'],sedih:['gembira'],
+ kuat:['lemah'],lemah:['kuat'],jauh:['dekat'],dekat:['jauh'],
+ kasar:['halus'],halus:['kasar'],baru:['lama'],lama:['baru'],
+ baik:['buruk','jahat'],buruk:['baik'],benar:['salah'],salah:['benar']};
+const MS_SYNONYMS={...MS_WORDS,marah:['berang','geram'],takut:['gentar','gerun','cemas'],
+ berani:['gagah','tidak takut'],indah:['cantik','elok'],pandai:['bijak','cerdik'],
+ sayang:['kasih','cinta'],membantu:['menolong','membantu'],
+ berbual:['berbincang','bercakap'],melihat:['memandang','menonton'],
+ makan:['menjamu','menikmati'],berjalan:['melangkah']};
+const MS_CONTEXT=[
+ [/\b(bersungguh sungguh|tekun|mengulang kaji|gigih|berusaha setiap hari)\b/u,'rajin'],
+ [/\b(menang|berjaya|memenangi|mendapat hadiah|menyambut hari jadi|menerima hadiah)\b/u,'gembira'],
+ [/\b(menangis|kematian|kehilangan|ditimpa musibah|gagal dalam peperiksaan)\b/u,'sedih'],
+ [/\b(tidak makan|perut kosong|belum sarapan)\b/u,'lapar'],
+ [/\b(tidak minum|tekak kering)\b/u,'haus'],
+ [/\b(berlari jauh|bersukan seharian|bekerja sepanjang hari)\b/u,'penat'],
+ [/\b(mengemas rumah|menyapu sampah|membasuh baju)\b/u,'bersih'],
+ [/\b(suka menolong|berbudi bahasa|bersopan santun)\b/u,'baik'],
+ [/\b(tidak mahu belajar|ponteng sekolah|tidak membuat kerja sekolah)\b/u,'malas'],
+ [/\b(terlalu banyak makan|selesai makan)\b/u,'kenyang'],
+ [/\b(menggigil kesejukan|hujan lebat)\b/u,'sejuk']
+];
+const MS_STOP=new Set('yang dan atau dengan untuk kepada dalam daripada pada ialah adalah itu ini dia mereka saya kami kita anda tidak telah akan sudah oleh di ke se satu sebuah seorang seekor kata maksud perkataan berikut antara pilih jawapan paling sesuai betul salah ayat petikan berdasarkan menurut'.split(' '));
+function msTokens(x){return msNorm(x).split(/\s+/).filter(w=>w.length>2&&!MS_STOP.has(w))}
 function offlineMalay(q,passage){
- const old=suggestMalay(q,passage);
- if(!q||q.t!=='mc'||!Array.isArray(q.o))return null;
- const opts=q.o.map(msNorm),prompt=msNorm(q.q);
- // A gap can be written as se___, se_____, or se pisang after PDF extraction.
- const hasGap=/\bse\s*[_….-]*\s+|\bse[_….-]+|\bse\s+/iu.test(q.q);
- if(hasGap){
-  const matches=[];
-  for(const [classifier,nouns] of Object.entries(MS_CLASSIFIERS)){
-   const choice=opts.indexOf(classifier);if(choice<0)continue;
-   for(const noun of nouns){
-    const pattern=new RegExp('\\b'+noun.replace(/ /g,'\\s+')+'\\b','iu');
-    if(pattern.test(prompt)){matches.push({a:choice,why:'Penjodoh bilangan: “'+classifier+'” for “'+noun+'”.',confidence:'high'});break}
+ if(!q||q.t!=='mc'||!Array.isArray(q.o)||q.o.length<2)return null;
+ const opts=q.o.map(msNorm),prompt=msNorm(q.q),body=msNorm(passage||'');
+ const optionsUnique=new Set(opts.filter(Boolean));
+ if(optionsUnique.size!==opts.length)return null;
+ const evidence=[];
+ const offer=(i,points,why)=>{if(i>=0&&opts[i])evidence.push({i,points,why})};
+ // Match a Malay counting word to the noun immediately AFTER the blank. Avoid
+ // answering an unrelated noun mentioned elsewhere in the question.
+ const gap=String(q.q).match(/\bse\s*[_….-]+\s*([\p{L}]+(?:\s+[\p{L}]+)?)/iu)||
+            String(q.q).match(/\bse\s+([\p{L}]+(?:\s+[\p{L}]+)?)/iu);
+ if(gap){
+  const following=msNorm(gap[1]);
+  const noun=following.split(' ')[0];
+  if(noun){
+   for(let i=0;i<opts.length;i++){
+    const candidate=opts[i];
+    const nouns=[...(MS_CLASSIFIERS[candidate]||[]),...(MS_MORE_CLASSIFIERS[candidate]||[])];
+    if(nouns.some(n=>noun===n||following.startsWith(n+' ')))offer(i,105,'Penjodoh bilangan “'+candidate+'” untuk “'+noun+'”.');
    }
   }
-  const unique=[...new Set(matches.map(x=>x.a))];
-  if(unique.length===1)return matches.find(x=>x.a===unique[0]);
-  // Ambiguous counters (e.g., both gugus and sikat for pisang) must not be guessed.
  }
- return old;
+ // Explicit synonym/antonym vocabulary tasks. Only answer when target is unambiguous.
+ const opposite=/\b(lawan kata|antonim|berlawanan maksud|berlawanan erti)\b/u.test(prompt);
+ const synonym=/\b(sinonim|sama maksud|sama erti|seerti)\b/u.test(prompt);
+ if(opposite||synonym){
+  const lexicon=opposite?MS_OPPOSITES:MS_SYNONYMS;
+  for(const [term,words] of Object.entries(lexicon)){
+   const re=new RegExp('\\b'+term.replace(/ /g,'\\s+')+'\\b','iu');
+   if(!re.test(prompt))continue;
+   for(let i=0;i<opts.length;i++)if(words.some(w=>opts[i]===msNorm(w)))offer(i,90,(opposite?'Antonim':'Sinonim')+' bagi “'+term+'”.');
+  }
+ }
+ // Context-clue completion for common school-level Malay vocabulary.
+ if(!opposite&&!synonym){
+  for(const [re,word] of MS_CONTEXT){if(!re.test(prompt))continue;
+   const allowed=(MS_WORDS[word]||[word]).map(msNorm);
+   for(let i=0;i<opts.length;i++)if(allowed.includes(opts[i]))offer(i,80,'Petunjuk konteks bahasa Melayu: “'+word+'”.');
+  }
+ }
+ // Comprehension: sentence-level overlap + exact candidate mention, NOT just
+ // choosing an option because it appears anywhere in a long passage.
+ if(body&&/berdasarkan|menurut|petikan|siapakah|apakah|mengapakah|bilakah|di manakah|bagaimanakah/u.test(prompt)){
+  const tokens=msTokens(prompt).filter(w=>w.length>3);
+  const sentences=String(passage).split(/[.!?。！？\n]+/).map(msNorm).filter(Boolean);
+  for(const sentence of sentences){
+   const overlap=tokens.filter(w=>sentence.includes(w)).length;
+   if(overlap<2)continue;
+   for(let i=0;i<opts.length;i++){
+    const val=opts[i];
+    if(val.length<3||!sentence.includes(val))continue;
+    // Score only the strongest passage sentence; avoid repeated mentions adding false certainty.
+    offer(i,Math.min(55,24+overlap*6),'Perkataan jawapan ditemui bersama petunjuk soalan dalam petikan.');
+   }
+  }
+ }
+ // Prefer evidence that strongly discriminates ONE answer. Never fill ambiguous answers.
+ const scores=opts.map(()=>0),reasons=opts.map(()=>[]);
+ for(const ev of evidence){scores[ev.i]=Math.max(scores[ev.i],ev.points);reasons[ev.i].push(ev.why)}
+ const order=scores.map((v,i)=>({v,i})).sort((a,b)=>b.v-a.v);
+ if(!order.length||order[0].v<42||order[0].v-order[1].v<20)return null;
+ return {a:order[0].i,why:[...new Set(reasons[order[0].i])][0]+' Semak sebelum terbit.',confidence:order[0].v>=80?'high':'medium'};
 }
 // Gemini suggestions are optional. Uncertain answers remain for teacher review.
 async function geminiSuggest(index=null){
@@ -333,7 +424,7 @@ function suggestOne(i){const q=S.D.q[i];if(!q||q.t!=='mc')return;
 function suggestAll(){let changed=0;
  for(let i=0;i<S.D.q.length;i++){const q=S.D.q[i];if(q.t!=='mc'||Number.isInteger(q.a)&&q.a>=0&&q.a<q.o.length)continue;
  const s=offlineMalay(q,S.D.passage);if(s){q.a=s.a;q.suggestion=s.why;changed++}}
- render();toast(changed?'Suggested '+changed+' answer(s). Review all suggestions before publishing.':'No reliable suggestions found. Select correct answers manually.');
+ render();toast(changed?'Suggested '+changed+' answer(s). Review all suggestions before publishing.':'Offline Malay rules could not determine the remaining answers confidently. Use 🤖 AI: Check ALL questions, or select answers manually.');
 }
 function review(){const D=S.D;
 return`<h1>Review digital version</h1><p class="mu">Check extracted text and answers before publishing. Gemini can suggest answers from the passage, but the teacher must verify them.</p>
