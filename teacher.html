@@ -127,7 +127,7 @@ S.up='busy';render();
 const nm=f.name.replace(/\.pdf$/i,'').replace(/[_-]+/g,' ').trim()||'Untitled worksheet';
 (f.arrayBuffer?readLines(f).then(L=>L.join('').length>15?L:ocrLines(f)).then(L=>{const D=parse(L,nm.charAt(0).toUpperCase()+nm.slice(1));
 if(!D.q.length)throw Error(L.length?"Couldn't find questions in this PDF. Number them like 1. or Q1.":'No readable text found, even with text recognition. Try a clearer scan, or pick the worksheet language.');return D}):Promise.resolve(JSON.parse(JSON.stringify(SEED))))
-.then(D=>{S.D=D;S.up='review';render()}).catch(e=>{S.up='idle';render();toast(e.message||'Could not read this PDF')})}
+.then(D=>{S.D=D;S.up='review';render();if(D.keyFound)toast('📄 PDF answer key detected: '+D.keyCount+' answer(s) filled automatically. Please review.');}).catch(e=>{S.up='idle';render();toast(e.message||'Could not read this PDF')})}
 const PB='https://cdn.jsdelivr.net/npm/pdfjs-dist@3.11.174/';
 const pdfOpts=async f=>({data:await f.arrayBuffer(),cMapUrl:PB+'cmaps/',cMapPacked:true,standardFontDataUrl:PB+'standard_fonts/'});
 function loadPdfJs(){return(window.pdfjsLib?Promise.resolve():new Promise((ok,no)=>{const s=document.createElement('script');s.src=PB+'build/pdf.min.js';s.onload=ok;s.onerror=()=>no(Error('Could not load the PDF reader. Check your internet connection.'));document.head.append(s)})).then(()=>{pdfjsLib.GlobalWorkerOptions.workerSrc=PB+'build/pdf.worker.min.js'})}
@@ -152,25 +152,64 @@ Object.keys(rows).map(Number).sort((a,b)=>b-a).forEach(y=>{let r=rows[y];if(!r.s
 const cnt={},k=l=>l.replace(/\d+/g,'#');pages.forEach(pl=>new Set(pl.map(k)).forEach(x=>cnt[x]=(cnt[x]||0)+1));
 return pages.flat().filter(l=>pages.length<2||cnt[k(l)]<2)}
 const KEY='(?:correct\\s+)?(?:answers?|ans|key|jawapan(?:\\s+betul)?|skema\\s+jawapan|respuesta|r[ée]ponse|antwort|l[öo]sung|resposta|risposta|jawaban|cevap|odpowied[zź]|antwoord|ответ|απάντηση|答案|答え|解答|정답|उत्तर|الإجابة|الاجابة|תשובה)';
+// Read a teacher answer-key section separately, so it cannot become student content.
+// The PDF may contain either a labelled choice (1. B - sikat) or a written answer (9. memasak).
+function readTeacherKey(lines){
+ const map={};let found=false;
+ for(const raw of lines){
+  const line=String(raw||'').trim();
+  if(/^\d+\s*[-–]\s*\d+\s*[.)]/.test(line))continue; // a range is not an individual answer
+  const m=line.match(/^(\d{1,3})\s*[.)、:：-]\s*(.+)$/u);
+  if(!m)continue;
+  const n=Number(m[1]),value=m[2].trim();
+  if(!value||n<1||n>999)continue;
+  const option=value.match(/^([A-H])\s*(?:[.)、:：-]\s*|\s+-\s+|\s+)(.+)$/i);
+  if(option)map[n]={letter:option[1].toUpperCase(),text:option[2].trim()};
+  else if(!/^(?:jawapan murid|rujukan|cadangan pemarkahan)/i.test(value))map[n]={text:value};
+ }
+ return map;
+}
 function parse(lines,name){const QR=/^(?:\p{L}{1,8}\.?\s*)?(\d{1,3})\s*[題题問号號番]?\s*[.)\]:、。]\s*(.+)/u,
-OS='(?:[.)、]\\s+|[.)、](?=[^\\x00-\\x7F]))',OR=new RegExp('(?:^|\\s)\\(?(\\p{L})'+OS,'u'),OL=new RegExp('^\\(?\\p{L}'+OS,'u'),AR=new RegExp('^'+KEY+'\\s*[:\\-]\\s*(.+)','iu'),KR=new RegExp(KEY,'iu'),
-NK=/(\d{1,3})\s*[.)、:\-]?\s*([A-Da-d])(?![\p{L}\p{Nd}])/gu,END=/[:?؟。.!)_]\s*$/;
-const qs=[],km={},intro=[];let cur=null,title='',m;
-for(const l of lines){
-if(/^[_\-.…—\s]{3,}$/.test(l))continue;
-if(m=l.match(QR)){cur={n:m[1],q:m[2],o:[],lab:[],txt:'',key:null};qs.push(cur);continue}
-if(KR.test(l)){const k=[...l.matchAll(NK)];if(k.length>=2){k.forEach(x=>km[x[1]]=x[2].toLowerCase());cur=null;continue}}
-if(!cur){if(!title&&l.length<90&&!/[.!?。！？]$/.test(l)&&!/(name|date|nama|tarikh|nombre|fecha|nom|datum|имя|дата|名前|姓名|日期|이름|الاسم|التاريخ)\s*:/iu.test(l))title=l;else intro.push(l);continue}
-if(m=l.match(AR)){const t=m[1].trim(),k=t.match(/^\(?(\p{L})(?![\p{L}\p{Nd}])/u);cur.key=k?k[1].toLowerCase():null;cur.txt=t;continue}
-if(OL.test(l)){const p=l.split(OR),f=p[1].toLowerCase(),a=cur.lab[cur.lab.length-1],
-ok=cur.o.length?(/[a-z]/.test(a)&&/[a-z]/.test(f)?f.charCodeAt(0)===a.charCodeAt(0)+1:true):(/[a-z]/.test(f)?f==='a':true);
-if(!ok){cur=null;continue}
-for(let i=1;i<p.length;i+=2){cur.lab.push(p[i].toLowerCase());cur.o.push((p[i+1]||'').trim())}continue}
-if(cur.o.length)cur.o[cur.o.length-1]+=' '+l;else if(!END.test(cur.q))cur.q+=' '+l}
-const cl=t=>t.replace(/_{2,}/g,'').replace(/\s+/g,' ').trim();
-let q=qs.map(x=>{if(x.o.length>=2){const k=x.key!=null?x.key:km[x.n]!=null?km[x.n]:null;let a=k!=null?x.lab.indexOf(k):-1;if(a<0&&x.txt)a=x.o.findIndex(o=>o.toLowerCase()===x.txt.toLowerCase());return{t:'mc',q:cl(x.q),o:x.o,a}}return{t:'tx',q:cl(x.q),a:x.txt}});
-if(!q.length)q=lines.filter(l=>/[?؟]\s*$/.test(l)).map(l=>({t:'tx',q:l,a:''}));
-return{title:(title||name).slice(0,80),lang:S.lang==='msa'?'ms':'en',passage:intro.join('\n').slice(0,20000),q}}
+ OS='(?:[.)、]\\s+|[.)、](?=[^\\x00-\\x7F]))',OR=new RegExp('(?:^|\\s)\\(?(\\p{L})'+OS,'u'),OL=new RegExp('^\\(?\\p{L}'+OS,'u'),AR=new RegExp('^'+KEY+'\\s*[:\\-]\\s*(.+)','iu'),KR=new RegExp(KEY,'iu'),
+ NK=/(\d{1,3})\s*[.)、:\-]?\s*([A-Da-d])(?![\p{L}\p{Nd}])/gu,END=/[:?؟。.!)_]\s*$/;
+ // The answer scheme must never be parsed as additional student questions.
+ const keyStart=lines.findIndex(l=>/^\s*(?:skema\s+jawapan|answer\s+key|marking\s+scheme|答案|参考答案|解答)\s*[:：]?\s*$/iu.test(l));
+ const body=keyStart<0?lines:lines.slice(0,keyStart),teacherKey=keyStart<0?{}:readTeacherKey(lines.slice(keyStart+1));
+ const qs=[],km={},intro=[];let cur=null,title='',m;
+ for(const l of body){
+ if(/^[_\-.…—\s]{3,}$/.test(l))continue;
+ if(/^\s*(?:Bahagian|Section|Part)\s+[A-Z](?:\s|:|$)/i.test(l)){cur=null;continue}
+ if(m=l.match(QR)){cur={n:Number(m[1]),q:m[2],o:[],lab:[],txt:'',key:null};qs.push(cur);continue}
+ if(KR.test(l)){const k=[...l.matchAll(NK)];if(k.length>=2){k.forEach(x=>km[x[1]]=x[2].toLowerCase());cur=null;continue}}
+ if(!cur){if(!title&&l.length<90&&!/[.!?。！？]$/.test(l)&&!/(name|date|nama|tarikh|nombre|fecha|nom|datum|имя|дата|名前|姓名|日期|이름|الاسم|التاريخ)\s*:/iu.test(l))title=l;else intro.push(l);continue}
+ if(m=l.match(AR)){const t=m[1].trim(),k=t.match(/^\(?(\p{L})(?![\p{L}\p{Nd}])/u);cur.key=k?k[1].toLowerCase():null;cur.txt=t;continue}
+ if(OL.test(l)){const p=l.split(OR),f=p[1].toLowerCase(),a=cur.lab[cur.lab.length-1],
+ ok=cur.o.length?(/[a-z]/.test(a)&&/[a-z]/.test(f)?f.charCodeAt(0)===a.charCodeAt(0)+1:true):(/[a-z]/.test(f)?f==='a':true);
+ if(!ok){cur=null;continue}
+ for(let i=1;i<p.length;i+=2){cur.lab.push(p[i].toLowerCase());cur.o.push((p[i+1]||'').trim())}continue}
+ if(cur.o.length)cur.o[cur.o.length-1]+=' '+l;else if(!END.test(cur.q))cur.q+=' '+l
+ }
+ const cl=t=>t.replace(/_{2,}/g,'').replace(/\s+/g,' ').trim();
+ let extracted=0,unmatched=[];
+ const q=qs.map(x=>{
+  const key=teacherKey[x.n];
+  if(x.o.length>=2){
+   const k=key?.letter?.toLowerCase()||x.key||km[x.n]||null;
+   let a=k?x.lab.indexOf(k):-1;
+   // Some keys write only the full answer, rather than A/B/C/D.
+   if(a<0&&key?.text){const v=key.text.toLocaleLowerCase().trim();a=x.o.findIndex(o=>o.toLocaleLowerCase().trim()===v)}
+   if(a<0&&x.txt)a=x.o.findIndex(o=>o.toLowerCase()===x.txt.toLowerCase());
+   if(key&&a<0)unmatched.push(x.n);
+   if(key&&a>=0)extracted++;
+   return{t:'mc',q:cl(x.q),o:x.o,a,...(key&&a>=0?{suggestion:'📄 Answer extracted from the PDF teacher answer key. Verify before publishing.'}:{})}
+  }
+  const a=key?.text||x.txt||'';
+  if(key?.text){extracted++}
+  return{t:'tx',q:cl(x.q),a,...(key?.text?{suggestion:'📄 Model answer extracted from the PDF teacher answer key. Review before publishing.'}:{})}
+ });
+ if(!q.length)q.push(...body.filter(l=>/[?؟]\s*$/.test(l)).map(l=>({t:'tx',q:l,a:''})));
+ return{title:(title||name).slice(0,80),lang:S.lang==='msa'?'ms':'en',passage:intro.join('\n').slice(0,20000),q,keyFound:keyStart>=0,keyCount:extracted,keyUnmatched:unmatched};
+}
 // Malay-aware, offline answer suggestions. These are rule-based, not a remote AI model.
 const MS_WORDS={
 'gembira':['gembira','riang','seronok','suka hati','bahagia','girang'],
@@ -427,7 +466,7 @@ function suggestAll(){let changed=0;
  render();toast(changed?'Suggested '+changed+' answer(s). Review all suggestions before publishing.':'Offline Malay rules could not determine the remaining answers confidently. Use 🤖 AI: Check ALL questions, or select answers manually.');
 }
 function review(){const D=S.D;
-return`<h1>Review digital version</h1><p class="mu">Check extracted text and answers before publishing. Gemini can suggest answers from the passage, but the teacher must verify them.</p>
+return`<h1>Review digital version</h1><p class="mu">Check extracted text and answers before publishing. Gemini can suggest answers from the passage, but the teacher must verify them.</p>${D.keyFound?`<div class="card" role="status" style="background:#eaf8ed"><b>📄 Teacher answer key detected!</b><p>${D.keyCount} answer(s) filled from the PDF automatically. ${D.keyUnmatched.length?`Could not match question(s): ${D.keyUnmatched.join(", ")}.`:""} Please verify every answer before publishing. The answer key is not shown to students.</p></div>`:""}
 <div class="card"><label class="q" for="wt">Worksheet title / Tajuk lembaran kerja</label><input type="text" id="wt" value="${esc(D.title)}" oninput="S.D.title=this.value"><label class="q" for="wl" style="display:block;margin-top:12px">Worksheet language / Bahasa</label><select id="wl" onchange="S.D.lang=this.value"><option value="en" ${D.lang!=='ms'?'selected':''}>English</option><option value="ms" ${D.lang==='ms'?'selected':''}>Bahasa Melayu</option></select></div><div class="card"><label class="q" for="passage">Reading comprehension passage / Petikan kefahaman (文章)</label><p class="mu">Students will see this passage above the questions. Check that the extracted text is complete and correct.</p><textarea id="passage" style="min-height:190px" placeholder="Paste or edit the reading passage here / Tampal petikan di sini" oninput="S.D.passage=this.value">${esc(D.passage||'')}</textarea></div>`+
 `<div class="actions" style="margin-bottom:12px"><button class="pri" id="check-all-ai" onclick="checkAllWithGemini()">🤖 AI: Check ALL questions</button><button onclick="geminiSuggest()">🤖 Gemini: suggest missing answers</button><button onclick="suggestAll()">🇲🇾 Offline: Check missing Malay answers</button><span class="mu">Suggestions require teacher review; uncertain questions are left blank.</span></div>`+
 D.q.map((q,i)=>`<div class="card" id="question-${i}"><div style="display:flex;justify-content:space-between;align-items:center"><span class="badge b-p">${q.t==='mc'?'Multiple choice':'Written sentences'}</span><button class="sm" onclick="S.D.q.splice(${i},1);render()" aria-label="Delete question ${i+1}">Delete</button></div>
