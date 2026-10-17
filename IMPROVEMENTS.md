@@ -18,3 +18,12 @@ PDF layouts and OCR quality vary, especially for scanned worksheets. Always revi
 ## Deployment
 
 Keep the existing project structure when uploading these files to the existing GitHub/Vercel project. The `api/server.js` change accepts Chinese (`zh`) worksheets and adds the teacher-only `extractWorksheet` endpoint. Existing Supabase tables and environment variables do not need a schema change. The AI separation feature uses the existing `GEMINI_API_KEY` and optional `GEMINI_MODEL` Vercel environment variables.
+
+
+## Remembered sign-in
+
+- Student and teacher sign-in is saved in browser `localStorage`, so it survives closing and reopening the site/browser.
+- Closing the browser or being inactive no longer signs users out automatically.
+- The explicit **Sign out** action clears the saved token and user data. A sign-out in another tab is also respected.
+- The API issues 30-day tokens and renews them when the signed-in page is reopened or revisited. A user who stays away longer than the token lifetime may need to sign in again.
+- Sign-in is saved per device/browser. On shared devices, choose **Sign out** when finished.

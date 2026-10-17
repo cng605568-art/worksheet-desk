@@ -74,7 +74,8 @@ textarea{line-height:1.65}
 <main id="app"></main><div id="ov"></div>
 <script>
 const $=s=>document.querySelector(s),esc=s=>String(s==null?'':s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
-const ss={get:k=>{try{return sessionStorage.getItem(k)}catch(e){return null}},set:(k,v)=>{try{v==null?sessionStorage.removeItem(k):sessionStorage.setItem(k,v)}catch(e){}}};
+// Remember sign-in between visits. Migrate any existing tab-only session to persistent storage.
+const ss={get:k=>{try{let v=localStorage.getItem(k);if(v!==null)return v;v=sessionStorage.getItem(k);if(v!==null){localStorage.setItem(k,v);sessionStorage.removeItem(k)}return v}catch(e){try{return sessionStorage.getItem(k)}catch(_){return null}}},set:(k,v)=>{try{if(v==null){localStorage.removeItem(k);sessionStorage.removeItem(k)}else localStorage.setItem(k,v)}catch(e){try{v==null?sessionStorage.removeItem(k):sessionStorage.setItem(k,v)}catch(_){}}}};
 const S={token:ss.get('wds_t')||'',user:null,mode:'login',pub:[],done:{},loaded:false,err:'',cur:null,A:{}};
 try{S.user=JSON.parse(ss.get('wds_u')||'null')}catch(e){}
 if(!S.user||S.user.role!=='student')S.token='',S.user=null;
@@ -82,11 +83,13 @@ let LAST=Date.now();
 function toast(m){const e=document.createElement('div');e.className='toast';e.textContent=m;document.body.append(e);setTimeout(()=>e.remove(),4500)}
 $('#th').onclick=()=>{const r=document.documentElement,dark=r.dataset.theme?r.dataset.theme==='dark':matchMedia('(prefers-color-scheme:dark)').matches;r.dataset.theme=dark?'light':'dark';$('#th').textContent=dark?'Dark mode':'Light mode'};
 async function post(a,payload){const r=await fetch('/api/server?a='+a,{method:'POST',headers:{'Content-Type':'application/json',...(S.token?{Authorization:'Bearer '+S.token}:{})},body:JSON.stringify(payload||{}),cache:'no-store'});
-const j=await r.json().catch(()=>({}));if(!r.ok){if(r.status===401&&S.token)signOut('Please sign in again.');throw Error(j.error||'Request failed')}return j}
+const j=await r.json().catch(()=>({}));if(!r.ok){if(r.status===401&&S.token)signOut('Your session expired. Please sign in again.');throw Error(j.error||'Request failed')}return j}
+let refreshing=false;
+async function refreshSession(){if(!S.token||refreshing)return;refreshing=true;try{const j=await post('refresh');if(S.token){S.token=j.token;ss.set('wds_t',j.token)}}catch(e){/* post() already clears an invalid/expired session */}finally{refreshing=false}}
 function signOut(msg){S.token='';S.user=null;S.pub=[];S.done={};S.loaded=false;S.cur=null;S.A={};S.mode='login';ss.set('wds_t',null);ss.set('wds_u',null);render();scrollTo(0,0);if(msg)toast(msg)}
 const f=(id,l,t,ac,x)=>`<label class="q" for="${id}" style="display:block;margin-top:12px">${l}</label><input type="${t}" id="${id}" autocomplete="${ac}" ${x||''}>`;
 function authView(){const c=S.mode==='create';
-return`<div class="card"><h1>${c?'Create your account':'Sign in'}</h1><p class="mu">${c?'Use your real name so your teacher knows who you are.':'Sign in with your worksheet account to see your worksheets.'}</p>`+
+return`<div class="card"><h1>${c?'Create your account':'Sign in'}</h1><p class="mu">${c?'Use your real name so your teacher knows who you are.':'Sign in with your worksheet account to see your worksheets.'}</p>${c?'':'<p class="mu">You will stay signed in on this device until you choose Sign out. On a shared device, sign out when you finish.</p>'}`+
 (c?f('an','Your name','text','name'):'')+f('au','Username','text','username','autocapitalize="none" spellcheck="false"')+f('ap','Password'+(c?' (6+ characters)':''),'password',c?'new-password':'current-password')+(c?f('ap2','Confirm password','password','new-password'):'')+
 `<div class="actions" style="margin-top:14px"><button class="pri" id="ab" onclick="auth()">${c?'Create account':'Sign in'}</button><button onclick="S.mode='${c?'login':'create'}';render()">${c?'I already have an account':'Create an account'}</button></div><p class="mu" style="margin-top:12px">Forgot your password? Ask your teacher to reset it.</p></div>`}
 async function auth(){const c=S.mode==='create',un=$('#au').value.trim(),pw=$('#ap').value;
@@ -120,7 +123,10 @@ S.done[S.cur]=1;S.cur=null;S.A={};render();
 $('#ov').innerHTML='<div class="modal" role="dialog" aria-modal="true" aria-labelledby="mt"><div class="card"><div class="tick">✅</div><h2 id="mt">Submitted successfully</h2><p class="mu">Your teacher can now see your answers.</p><button class="pri" id="okb">Done</button></div></div>';
 $('#okb').focus();$('#okb').onclick=()=>{$('#ov').innerHTML=''}}
 catch(e){if(!S.token)return;toast(e.message==='Failed to fetch'?'No connection. Your answers are still here. Try again.':e.message);b.disabled=false;b.textContent='Submit worksheet'}}
-setInterval(()=>{if(S.token&&Date.now()-LAST>12e5)signOut('Signed out after 20 minutes of inactivity')},15000);
+// No inactivity logout: the account remains signed in until the user selects Sign out.
+setInterval(()=>{if(S.token&&!document.hidden)refreshSession()},12*60*60*1000);
+document.addEventListener('visibilitychange',()=>{if(!document.hidden&&S.token)refreshSession()});
+addEventListener('storage',e=>{if(e.key==='wds_t'&&!e.newValue&&S.token)signOut('Signed out')});
 setInterval(()=>{if(S.token&&S.loaded&&!document.hidden&&!S.cur)load()},30000);
-render();if(S.token)load();
+render();if(S.token)refreshSession().then(()=>{if(S.token)load()});
 </script></body></html>

@@ -91,7 +91,8 @@ const SEED={title:'Photosynthesis basics',q:[
 {t:'mc',q:'Where in the cell does photosynthesis happen?',o:['Nucleus','Mitochondria','Chloroplast','Ribosome'],a:2},
 {t:'tx',q:'In two or three sentences, explain why sunlight matters to a plant.',a:'Sunlight supplies the energy plants use to turn carbon dioxide and water into glucose and oxygen.'},
 {t:'tx',q:'Describe what would happen to a plant kept in the dark for a week.',a:'It could not make glucose, so it would run out of stored energy, yellow and eventually die.'}]};
-const ss={get:k=>{try{return sessionStorage.getItem(k)}catch(e){return null}},set:(k,v)=>{try{v==null?sessionStorage.removeItem(k):sessionStorage.setItem(k,v)}catch(e){}}};
+// Remember sign-in between visits. Migrate any existing tab-only session to persistent storage.
+const ss={get:k=>{try{let v=localStorage.getItem(k);if(v!==null)return v;v=sessionStorage.getItem(k);if(v!==null){localStorage.setItem(k,v);sessionStorage.removeItem(k)}return v}catch(e){try{return sessionStorage.getItem(k)}catch(_){return null}}},set:(k,v)=>{try{if(v==null){localStorage.removeItem(k);sessionStorage.removeItem(k)}else localStorage.setItem(k,v)}catch(e){try{v==null?sessionStorage.removeItem(k):sessionStorage.setItem(k,v)}catch(_){}}}};
 const S={wss:[],subs:[],students:[],tmp:null,tab:'upload',up:'idle',D:null,sel:null,maxQuestions:'5',token:ss.get('wdt_t')||'',user:null,auth:false,mode:'login',health:null};
 try{S.user=JSON.parse(ss.get('wdt_u')||'null')}catch(e){}
 S.auth=!!(S.token&&S.user&&S.user.role==='teacher');if(!S.auth)S.token='';
@@ -99,7 +100,9 @@ const pts=q=>q.t==='mc'?1:2,total=w=>w.q.reduce((n,q)=>n+pts(q),0);
 /* TEACHER ACCOUNT (checked on the server) */
 let LAST=Date.now();
 async function api(a,payload){const r=await fetch('/api/server?a='+a,{method:'POST',headers:{'Content-Type':'application/json',Authorization:'Bearer '+S.token},body:JSON.stringify(payload||{}),cache:'no-store'});
-const j=await r.json().catch(()=>({}));if(r.status===401&&S.auth){lock();toast('Please sign in again.')}if(!r.ok)throw Error(j.error||'Request failed');return j}
+const j=await r.json().catch(()=>({}));if(r.status===401&&S.auth){lock();toast('Your session expired. Please sign in again.')}if(!r.ok)throw Error(j.error||'Request failed');return j}
+let refreshing=false;
+async function refreshSession(){if(!S.auth||!S.token||refreshing)return;refreshing=true;try{const j=await api('refresh');if(S.auth){S.token=j.token;ss.set('wdt_t',j.token)}}catch(e){/* api() locks an invalid/expired session */}finally{refreshing=false}}
 async function pub(a,payload){const r=await fetch('/api/server?a='+a,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload),cache:'no-store'});const j=await r.json().catch(()=>({}));if(!r.ok)throw Error(j.error||'Request failed');return j}
 async function loadState(quiet){try{const j=await api('load');S.wss=j.wss;S.subs=j.subs}catch(e){if(!quiet)toast(e.message)}}
 async function saveWss(){try{await api('save',{wss:S.wss});return true}catch(e){toast('Could not save: '+e.message);return false}}
@@ -117,9 +120,11 @@ const j=await pub(m==='create'?'register':'login',m==='create'?{role:'teacher',n
 S.token=j.token;S.user=j.user;S.auth=true;ss.set('wdt_t',j.token);ss.set('wdt_u',JSON.stringify(j.user));LAST=Date.now();await loadState();S.tab=S.subs.some(x=>x.status!=='Marked')?'dash':'upload';render();scrollTo(0,0)}
 catch(e){toast(e.message==='Failed to fetch'?'Cannot reach the server. Open this page from your website address.':e.message);const bb=$('#app button.pri');if(bb)bb.disabled=false}}
 function lock(){S.auth=false;S.token='';S.user=null;ss.set('wdt_t',null);ss.set('wdt_u',null);S.sel=null;S.wss=[];S.subs=[];S.students=[];S.tmp=null;S.tab='upload';S.mode='login';render();scrollTo(0,0)}
-['pointerdown','keydown'].forEach(e=>addEventListener(e,()=>{LAST=Date.now()}));
 addEventListener('keydown',e=>{if(e.key==='Enter'&&['tn','tu','tp','tp2','tc'].includes(e.target.id))authGo()});
-setInterval(()=>{if(S.auth&&Date.now()-LAST>6e5){lock();toast('Signed out after 10 minutes of inactivity')}},15000);
+// No inactivity logout: the teacher remains signed in until they choose Sign out.
+setInterval(()=>{if(S.auth&&!document.hidden)refreshSession()},12*60*60*1000);
+document.addEventListener('visibilitychange',()=>{if(!document.hidden&&S.auth)refreshSession()});
+addEventListener('storage',e=>{if(e.key==='wdt_t'&&!e.newValue&&S.auth)lock()});
 function gate(){const h=S.health,m=S.mode;let warn='';
 if(h===false)warn='<div class="card" style="box-shadow:none;border-color:var(--bad)"><b>Cannot reach the server.</b><p class="mu">Open this page from your website address (for example your-site.vercel.app/teacher), not from a downloaded file.</p></div>';
 else if(h&&(!h.db||(m!=='login'&&!h.teacherSignup)))warn='<div class="card" style="box-shadow:none;border-color:var(--bad)"><b>Setup is not finished.</b><ul class="mu">'+(h.db?'':'<li>Check SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY in Vercel, and run supabase-setup.sql in Supabase.</li>')+(h.teacherSignup?'':'<li>Add the TEACHER_SIGNUP_CODE environment variable in Vercel.</li>')+'</ul><p class="mu">Then redeploy the project.</p></div>';
@@ -128,7 +133,7 @@ let title,intro,fields,btn;
 if(m==='create'){title='Create teacher account';intro='You need the teacher code from the site owner. Students cannot create teacher accounts without it.';fields=f('tn','Your name','text','name')+u+f('tp','Password (6+ characters)','password','new-password')+f('tp2','Confirm password','password','new-password')+f('tc','Teacher code','password','off');btn='Create account'}
 else if(m==='forgot'){title='Reset teacher password';intro='Enter your username and the teacher code, then choose a new password.';fields=u+f('tc','Teacher code','password','off')+f('tp','New password (6+ characters)','password','new-password')+f('tp2','Confirm new password','password','new-password');btn='Reset password'}
 else{title='Teacher sign in';intro='Sign in with your teacher account to upload worksheets and mark student work.';fields=u+f('tp','Password','password','current-password');btn='Sign in'}
-return warn+`<div class="card"><h1>${title}</h1><p>${intro}</p>${fields}<div class="actions" style="margin-top:14px"><button class="pri" onclick="authGo()">${btn}</button>`+(m==='login'?`<button onclick="S.mode='create';render()">Create teacher account</button><button onclick="S.mode='forgot';render()">Forgot password?</button>`:`<button onclick="S.mode='login';render()">Back</button>`)+'</div></div>'}
+return warn+`<div class="card"><h1>${title}</h1><p>${intro}</p>${m==='login'?'<p class="mu">You will stay signed in on this device until you choose Sign out. On a shared device, sign out when you finish.</p>':''}${fields}<div class="actions" style="margin-top:14px"><button class="pri" onclick="authGo()">${btn}</button>`+(m==='login'?`<button onclick="S.mode='create';render()">Create teacher account</button><button onclick="S.mode='forgot';render()">Forgot password?</button>`:`<button onclick="S.mode='login';render()">Back</button>`)+'</div></div>'}
 function students(){const t=S.tmp,n=S.students.length;
 return(t?`<div class="card"><h2>New password for ${esc(t.name)}</h2><p>Username: <b>${esc(t.username)}</b></p><p class="q" style="font-size:26px;letter-spacing:2px" dir="ltr">${esc(t.password)}</p><p class="mu">Tell the student this password. It will not be shown again.</p><button class="pri" onclick="S.tmp=null;render()">Done</button></div>`:'')+
 `<div style="display:flex;justify-content:space-between;align-items:center;gap:10px"><h1>Students</h1><button class="sm" onclick="loadStudents()">Refresh</button></div>`+
@@ -615,6 +620,7 @@ if(isNaN(v)||v<0||v>mx){toast('Enter a score from 0 to '+mx);return}
 try{const j=await api('grade',{id,score:v,fb:$('#fb').value});Object.assign(s,j.sub);S.sel=null;render();toast('Grade saved')}catch(e){toast('Could not save: '+e.message)}}
 async function refresh(){await loadState();render();toast('Updated')}
 setInterval(async()=>{if(S.auth&&S.tab==='dash'&&!S.sel&&!document.hidden){await loadState(true);if(S.auth&&S.tab==='dash'&&!S.sel)render()}},15000);
-health();if(S.auth)loadState().then(()=>{S.tab=S.subs.some(x=>x.status!=='Marked')?'dash':'upload';render()});
+health();
+if(S.auth)refreshSession().then(()=>{if(!S.auth)return;return loadState().then(()=>{if(S.auth){S.tab=S.subs.some(x=>x.status!=='Marked')?'dash':'upload';render()}})});
 render();
 </script></body></html>
