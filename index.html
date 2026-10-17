@@ -46,6 +46,29 @@ textarea{min-height:100px;resize:vertical}
 .modal .card{max-width:380px;text-align:center;margin:0}
 .tick{font-size:48px}
 .toast{max-width:90vw;text-align:center;position:fixed;left:50%;bottom:calc(20px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);background:var(--tx);color:var(--bg);padding:10px 18px;border-radius:8px;z-index:30}
+
+/* Matching Worksheet Desk visual refresh */
+:root{--bg:#f4f7fb;--card:#fff;--tx:#17243b;--mu:#68758b;--bd:#dce4ef;--ac:#2463eb;--act:#fff;--hl:#e4edff;--ok:#16794a;--okb:#e3f7eb;--bad:#b42318;--badb:#fff0ef;--wn:#875900;--wnb:#fff4d6}
+@media(prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#0b1220;--card:#121d30;--tx:#e8eef9;--mu:#a7b5ca;--bd:#29374d;--ac:#84aaff;--act:#102044;--hl:#243b64;--ok:#8ee2ac;--okb:#183b2c;--bad:#ffaaa4;--badb:#472321;--wn:#ffdc7b;--wnb:#3d321b}}
+:root[data-theme="dark"]{--bg:#0b1220;--card:#121d30;--tx:#e8eef9;--mu:#a7b5ca;--bd:#29374d;--ac:#84aaff;--act:#102044;--hl:#243b64;--ok:#8ee2ac;--okb:#183b2c;--bad:#ffaaa4;--badb:#472321;--wn:#ffdc7b;--wnb:#3d321b}
+body{background:radial-gradient(ellipse at top left,rgba(36,99,235,.07),transparent 45%),var(--bg);background-attachment:fixed}
+header{border-bottom:1px solid var(--bd);box-shadow:0 5px 24px rgba(20,35,60,.06)}
+.bar{padding-top:13px;padding-bottom:13px}
+button{border:1px solid var(--bd);border-radius:12px;transition:transform .16s ease,box-shadow .16s ease,border-color .16s ease}
+button:hover{border-color:var(--ac);box-shadow:0 4px 12px rgba(28,60,110,.08)}
+button:active{transform:translateY(1px)}
+button.pri{background:var(--ac);color:var(--act);border-color:var(--ac);box-shadow:0 5px 12px rgba(36,99,235,.16)}
+.card{border:1px solid var(--bd);border-radius:17px;box-shadow:0 7px 24px rgba(19,35,61,.055);padding:18px}
+h1{font-size:clamp(25px,4vw,31px);letter-spacing:-.8px;line-height:1.2}
+h2{letter-spacing:-.3px}
+input[type=text],input[type=password],textarea{border:1px solid var(--bd);border-radius:11px;background:color-mix(in srgb,var(--card) 84%,var(--bg))}
+textarea{line-height:1.65}
+.opt{border:1px solid var(--bd);border-radius:11px}
+.opt:has(input:checked){border-color:var(--ac);background:var(--hl);color:var(--tx)}
+.row{border-radius:14px;box-shadow:none!important}
+.badge{padding:4px 10px}
+.toast{border:1px solid var(--bd);border-radius:13px;box-shadow:0 10px 30px rgba(0,0,0,.2)}
+@media(max-width:560px){main{padding:16px 12px 48px}.bar{padding-left:12px;padding-right:12px}.card{padding:15px;border-radius:15px}.row{align-items:flex-start}}
 </style></head><body>
 <header><div class="bar"><span class="logo">✏️ Worksheet Desk</span><span id="who" class="mu"></span><button id="so" class="sm" hidden onclick="signOut('Signed out')">Sign out</button><button id="th" class="sm" aria-label="Toggle light or dark theme">Dark mode</button></div></header>
 <main id="app"></main><div id="ov"></div>
@@ -87,9 +110,9 @@ const n=S.pub.length;if(!n)return'<div class="card"><h1>No worksheets yet</h1><p
 const w=S.pub.find(x=>x.id===S.cur);
 if(!w)return`<div style="display:flex;justify-content:space-between;align-items:center;gap:10px"><h1>Choose a worksheet</h1><button class="sm" onclick="load(true)">Refresh</button></div><p class="mu" style="margin-top:-8px">${n} worksheet${n>1?'s':''} available</p>`+S.pub.map(x=>{const mc=x.q.filter(q=>q.t==='mc').length;
 return`<button class="row card" onclick="openWs(${x.id})"><span><b>${esc(x.title)}</b><br><span class="mu">${x.q.length} question${x.q.length>1?'s':''} · ${mc} multiple choice · ${x.q.length-mc} written</span></span><span class="badge ${S.done[x.id]?'b-m':'b-p'}">${S.done[x.id]?'Submitted':'Start'}</span></button>`}).join('');
-return`<button class="sm" onclick="S.cur=null;S.A={};render()" style="margin-bottom:10px">← All worksheets</button><h1>${esc(w.title)}</h1>${w.passage?`<section class="card"><h2>${w.lang==='ms'?'Petikan Kefahaman':'Reading comprehension passage'} (文章)</h2><div style="white-space:pre-wrap;line-height:1.8;overflow-wrap:anywhere">${esc(w.passage)}</div></section>`:''}<p class="mu" style="margin-top:-8px">Submitting as <b>${esc(S.user.name)}</b></p>`+
-w.q.map((q,i)=>`<div class="card"><p class="q">${i+1}. ${esc(q.q)}</p>`+(q.t==='mc'?q.o.map((o,j)=>`<label class="opt"><input type="radio" name="q${i}" ${S.A[i]===j?'checked':''} onchange="S.A[${i}]=${j}"> ${esc(o)}</label>`).join(''):`<textarea aria-label="Answer to question ${i+1}" placeholder="${w.lang==='ms'?'Taip jawapan anda di sini':'Type your answer here'}" oninput="S.A[${i}]=this.value">${esc(S.A[i]||'')}</textarea>`)+'</div>').join('')+
-`<button class="pri" id="sb" style="width:100%" onclick="submitWs()">${w.lang==='ms'?'Hantar lembaran kerja':'Submit worksheet'}</button>`}
+return`<button class="sm" onclick="S.cur=null;S.A={};render()" style="margin-bottom:10px">← All worksheets</button><h1>${esc(w.title)}</h1>${w.passage?`<section class="card"><h2>${w.lang==='ms'?'Petikan Kefahaman':w.lang==='zh'?'阅读文章':'Reading comprehension passage'}${w.lang==='zh'?'':' (文章)'}</h2><div style="white-space:pre-wrap;line-height:1.8;overflow-wrap:anywhere">${esc(w.passage)}</div></section>`:''}<p class="mu" style="margin-top:-8px">Submitting as <b>${esc(S.user.name)}</b></p>`+
+w.q.map((q,i)=>`<div class="card"><p class="q">${i+1}. ${esc(q.q)}</p>`+(q.t==='mc'?q.o.map((o,j)=>`<label class="opt"><input type="radio" name="q${i}" ${S.A[i]===j?'checked':''} onchange="S.A[${i}]=${j}"> ${esc(o)}</label>`).join(''):`<textarea aria-label="Answer to question ${i+1}" placeholder="${w.lang==='ms'?'Taip jawapan anda di sini':w.lang==='zh'?'请在这里填写答案':'Type your answer here'}" oninput="S.A[${i}]=this.value">${esc(S.A[i]||'')}</textarea>`)+'</div>').join('')+
+`<button class="pri" id="sb" style="width:100%" onclick="submitWs()">${w.lang==='ms'?'Hantar lembaran kerja':w.lang==='zh'?'提交练习':'Submit worksheet'}</button>`}
 function openWs(id){S.cur=id;S.A={};render();scrollTo(0,0)}
 async function submitWs(){const w=S.pub.find(x=>x.id===S.cur);if(!w)return;const b=$('#sb');b.disabled=true;b.textContent='Sending…';
 try{await post('submit',{wid:w.id,ans:S.A});

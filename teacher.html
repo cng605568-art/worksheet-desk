@@ -48,6 +48,38 @@ textarea{min-height:100px;resize:vertical}
 .modal .card{max-width:380px;text-align:center;margin:0}
 .tick{font-size:48px}
 .toast{max-width:90vw;text-align:center;position:fixed;left:50%;bottom:calc(20px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);background:var(--tx);color:var(--bg);padding:10px 18px;border-radius:8px;z-index:30}
+
+/* Worksheet Desk refresh: cleaner, calmer, mobile-first styling */
+:root{--bg:#f4f7fb;--card:#ffffff;--tx:#17243b;--mu:#68758b;--bd:#dce4ef;--ac:#2463eb;--act:#ffffff;--hl:#e4edff;--ok:#16794a;--okb:#e3f7eb;--bad:#b42318;--badb:#fff0ef;--wn:#875900;--wnb:#fff4d6}
+@media(prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#0b1220;--card:#121d30;--tx:#e8eef9;--mu:#a7b5ca;--bd:#29374d;--ac:#84aaff;--act:#102044;--hl:#243b64;--ok:#8ee2ac;--okb:#183b2c;--bad:#ffaaa4;--badb:#472321;--wn:#ffdc7b;--wnb:#3d321b}}
+:root[data-theme="dark"]{--bg:#0b1220;--card:#121d30;--tx:#e8eef9;--mu:#a7b5ca;--bd:#29374d;--ac:#84aaff;--act:#102044;--hl:#243b64;--ok:#8ee2ac;--okb:#183b2c;--bad:#ffaaa4;--badb:#472321;--wn:#ffdc7b;--wnb:#3d321b}
+body{background:radial-gradient(ellipse at top left,rgba(36,99,235,.07),transparent 45%),var(--bg);background-image:radial-gradient(ellipse at top left,rgba(36,99,235,.07),transparent 45%);background-attachment:fixed}
+header{border-bottom:1px solid var(--bd);box-shadow:0 5px 24px rgba(20,35,60,.06)}
+.bar{padding-top:13px;padding-bottom:13px}
+.logo{letter-spacing:-.35px}
+nav{padding-top:3px}
+button{border:1px solid var(--bd);border-radius:12px;transition:transform .16s ease,box-shadow .16s ease,border-color .16s ease}
+button:hover{border-color:var(--ac);box-shadow:0 4px 12px rgba(28,60,110,.08)}
+button:active{transform:translateY(1px)}
+button.pri{background:var(--ac);color:var(--act);border-color:var(--ac);box-shadow:0 5px 12px rgba(36,99,235,.16)}
+button.tab[aria-selected=true]{background:var(--hl);color:var(--tx);border-color:var(--ac)}
+.card{border:1px solid var(--bd);border-radius:17px;box-shadow:0 7px 24px rgba(19,35,61,.055);padding:18px}
+h1{font-size:clamp(25px,4vw,31px);letter-spacing:-.8px;line-height:1.2;margin:5px 0 15px}
+h2{letter-spacing:-.3px}
+input[type=text],input[type=number],input[type=password],textarea,select{border:1px solid var(--bd);border-radius:11px;background:color-mix(in srgb,var(--card) 84%,var(--bg));}
+textarea{line-height:1.65}
+.opt{border:1px solid var(--bd);border-radius:11px}
+.opt:has(input:checked){border-color:var(--ac);background:var(--hl);color:var(--tx)}
+.drop{border:2px dashed #9eb4d3;border-radius:20px;background:var(--card);box-shadow:0 10px 28px rgba(19,35,61,.045);padding:clamp(24px,6vw,42px) 18px}
+.drop.over{background:var(--hl);border-color:var(--ac);color:var(--tx)}
+.row{border-radius:14px;text-align:left;box-shadow:none!important}
+.badge{padding:4px 10px}
+.actions{gap:8px;align-items:center}
+#passage{min-height:230px}
+#question-0{margin-top:4px}
+.q{line-height:1.4}
+.toast{border:1px solid var(--bd);border-radius:13px;box-shadow:0 10px 30px rgba(0,0,0,.2)}
+@media(max-width:560px){main{padding:16px 12px 48px}.bar{padding-left:12px;padding-right:12px}.card{padding:15px;border-radius:15px}.actions>*{max-width:100%}nav button{padding:8px 10px;font-size:15px}.row{align-items:flex-start}.drop{padding:24px 14px}}
 </style></head><body>
 <header><div class="bar"><span class="logo">✏️ Worksheet Desk · Teacher</span><button id="th" class="sm" aria-label="Toggle light or dark theme">Dark mode</button>
 <nav role="tablist" id="nv"></nav></div></header>
@@ -60,7 +92,7 @@ const SEED={title:'Photosynthesis basics',q:[
 {t:'tx',q:'In two or three sentences, explain why sunlight matters to a plant.',a:'Sunlight supplies the energy plants use to turn carbon dioxide and water into glucose and oxygen.'},
 {t:'tx',q:'Describe what would happen to a plant kept in the dark for a week.',a:'It could not make glucose, so it would run out of stored energy, yellow and eventually die.'}]};
 const ss={get:k=>{try{return sessionStorage.getItem(k)}catch(e){return null}},set:(k,v)=>{try{v==null?sessionStorage.removeItem(k):sessionStorage.setItem(k,v)}catch(e){}}};
-const S={wss:[],subs:[],students:[],tmp:null,tab:'upload',up:'idle',D:null,sel:null,token:ss.get('wdt_t')||'',user:null,auth:false,mode:'login',health:null};
+const S={wss:[],subs:[],students:[],tmp:null,tab:'upload',up:'idle',D:null,sel:null,maxQuestions:'5',token:ss.get('wdt_t')||'',user:null,auth:false,mode:'login',health:null};
 try{S.user=JSON.parse(ss.get('wdt_u')||'null')}catch(e){}
 S.auth=!!(S.token&&S.user&&S.user.role==='teacher');if(!S.auth)S.token='';
 const pts=q=>q.t==='mc'?1:2,total=w=>w.q.reduce((n,q)=>n+pts(q),0);
@@ -114,9 +146,9 @@ if(S.tab==='upload')bindDrop()}
 async function rmWs(id){if(!S.auth)return;const old=S.wss;S.wss=S.wss.filter(x=>x.id!==id);if(!await saveWss()){S.wss=old;return}render();toast('Removed')}
 /* UPLOAD */
 function upload(){
-if(S.up==='busy')return'<div class="card" style="text-align:center;padding:50px 16px" role="status"><div class="spin"></div><h2>AI converting worksheet to digital format…</h2><p class="mu" id="bm">Reading questions and finding answer choices.</p></div>';
+if(S.up==='busy')return'<div class="card" style="text-align:center;padding:50px 16px" role="status"><div class="spin"></div><h2>Converting worksheet…</h2><p class="mu" id="bm">Separating the reading passage from real questions and answer choices.</p></div>'; 
 if(S.up==='review'&&S.D)return review();
-return`<h1>Upload a worksheet</h1><div class="drop" id="dz"><div style="font-size:40px">📄</div><p class="q">Drag a PDF here or tap to browse</p><p class="mu">Extract questions and reading comprehension passages (文章 / petikan) from PDFs in English or Bahasa Melayu. Review all extracted text before publishing.</p><p class="mu" style="margin:12px 0 4px">Worksheet language (used for scanned PDFs)</p><select id="lg" aria-label="Worksheet language" onchange="S.lang=this.value">${LG.map(l=>`<option value="${l[0]}" ${S.lang===l[0]?'selected':''}>${l[1]}</option>`).join('')}</select><div class="actions" style="margin-top:14px" style="justify-content:center"><button class="pri" id="bb">Choose PDF</button><button id="sb">Try a sample</button></div><input type="file" id="fi" accept=".pdf,application/pdf" style="position:absolute;width:1px;height:1px;opacity:0;pointer-events:none" tabindex="-1" aria-hidden="true"></div>`+(S.wss.length?`<h2 style="margin-top:20px">Published worksheets (${S.wss.length})</h2>`+S.wss.map(w=>`<div class="card" style="display:flex;justify-content:space-between;align-items:center;gap:10px;box-shadow:none"><span><b>${esc(w.title)}</b><br><span class="mu">${w.q.length} questions</span></span><button class="sm" onclick="rmWs(${w.id})" aria-label="Remove ${esc(w.title)}">Remove</button></div>`).join(''):'<p class="mu">No worksheets published yet.</p>')}
+return`<h1>Upload a worksheet</h1><p class="mu" style="margin-top:-7px;margin-bottom:16px">Turn a PDF into a student-ready worksheet. Gemini separates the 文章 / petikan from real question prompts and keeps the default set short. If AI is unavailable, a local PDF reader is used instead.</p><div class="drop" id="dz"><div style="font-size:40px">📄</div><p class="q">Drag a PDF here or tap to browse</p><p class="mu">Best results come from clear, text-based PDFs. Scanned pages use text recognition. You can correct every field before publishing.</p><label class="q" for="lg" style="display:block;margin:16px 0 5px">Worksheet language / OCR language</label><select id="lg" aria-label="Worksheet language" onchange="S.lang=this.value">${LG.map(l=>`<option value="${l[0]}" ${S.lang===l[0]?'selected':''}>${l[1]}</option>`).join('')}</select><label class="q" for="mq" style="display:block;margin:14px 0 5px">Maximum questions to import</label><select id="mq" aria-label="Maximum questions to import" onchange="S.maxQuestions=this.value"><option value="3" ${S.maxQuestions==='3'?'selected':''}>3 questions</option><option value="5" ${S.maxQuestions==='5'?'selected':''}>5 questions · recommended</option><option value="8" ${S.maxQuestions==='8'?'selected':''}>8 questions</option><option value="10" ${S.maxQuestions==='10'?'selected':''}>10 questions</option><option value="all" ${S.maxQuestions==='all'?'selected':''}>All detected questions · local reader</option></select><div class="actions" style="margin-top:16px;justify-content:center"><button class="pri" id="bb">Choose PDF</button><button id="sb">Try a sample</button></div><input type="file" id="fi" accept=".pdf,application/pdf" style="position:absolute;width:1px;height:1px;opacity:0;pointer-events:none" tabindex="-1" aria-hidden="true"></div>`+(S.wss.length?`<h2 style="margin-top:20px">Published worksheets (${S.wss.length})</h2>`+S.wss.map(w=>`<div class="card" style="display:flex;justify-content:space-between;align-items:center;gap:10px;box-shadow:none"><span><b>${esc(w.title)}</b><br><span class="mu">${w.q.length} questions</span></span><button class="sm" onclick="rmWs(${w.id})" aria-label="Remove ${esc(w.title)}">Remove</button></div>`).join(''):'<p class="mu">No worksheets published yet.</p>')}
 function bindDrop(){const dz=$('#dz'),fi=$('#fi');if(!dz)return;
 dz.ondragover=e=>{e.preventDefault();dz.classList.add('over')};dz.ondragleave=()=>dz.classList.remove('over');
 dz.ondrop=e=>{e.preventDefault();dz.classList.remove('over');pick(e.dataTransfer.files[0])};
@@ -125,9 +157,44 @@ fi.onchange=()=>{if(fi.files&&fi.files[0])pick(fi.files[0]);else toast('No file 
 function pick(f){if(!S.auth||!f)return;if(!/pdf$/i.test(f.type)&&!/\.pdf$/i.test(f.name)){toast('Please choose a PDF file');return}
 S.up='busy';render();
 const nm=f.name.replace(/\.pdf$/i,'').replace(/[_-]+/g,' ').trim()||'Untitled worksheet';
-(f.arrayBuffer?readLines(f).then(L=>L.join('').length>15?L:ocrLines(f)).then(L=>{const D=parse(L,nm.charAt(0).toUpperCase()+nm.slice(1));
-if(!D.q.length)throw Error(L.length?"Couldn't find questions in this PDF. Number them like 1. or Q1.":'No readable text found, even with text recognition. Try a clearer scan, or pick the worksheet language.');return D}):Promise.resolve(JSON.parse(JSON.stringify(SEED))))
-.then(D=>{S.D=D;S.up='review';render();if(D.keyFound)toast('📄 PDF answer key detected: '+D.keyCount+' answer(s) filled automatically. Please review.');}).catch(e=>{S.up='idle';render();toast(e.message||'Could not read this PDF')})}
+(f.arrayBuffer?readLines(f).then(L=>L.join('').length>15?L:ocrLines(f)).then(async L=>{
+ const local=parse(L,nm.charAt(0).toUpperCase()+nm.slice(1));
+ const requested=S.maxQuestions==='all'?null:Math.max(1,Number(S.maxQuestions)||5);
+ let D=null,aiFailure=false;
+ // All detected questions uses the local reader; shorter sets use Gemini to separate the article from actual prompts.
+ if(requested!==null){
+  say('AI is separating the 文章 / petikan from the actual questions…');
+  let source=L.join('\n');
+  if(source.length>28000)source=source.slice(0,22000)+'\n[Some middle-page text omitted because the PDF is very long.]\n'+source.slice(-5500);
+  const lang=S.lang==='msa'?'ms':(['chi_sim','chi_tra'].includes(S.lang)?'zh':'en');
+  try{
+   const result=await api('extractWorksheet',{text:source,title:nm,lang,maxQuestions:requested});
+   if(Array.isArray(result.q)&&result.q.length){
+    const candidate={title:typeof result.title==='string'&&result.title.trim()?result.title:local.title,lang:['en','ms','zh'].includes(result.lang)?result.lang:lang,
+     passage:typeof result.passage==='string'?result.passage:'',q:result.q,keyFound:result.keyFound===true,keyCount:Number(result.keyCount)||0,
+     keyUnmatched:Array.isArray(result.keyUnmatched)?result.keyUnmatched:[],aiUsed:true,detectedQuestionCount:Number(result.detectedQuestionCount)||result.q.length};
+    // If AI unexpectedly drops a substantial passage, trust the conservative local split instead.
+    if(String(local.passage||'').trim().length>120&&!String(candidate.passage||'').trim()){D=local;D.aiFallback=true;}
+    else D=candidate;
+   }else aiFailure=true;
+  }catch(e){aiFailure=true}
+ }
+ if(!D){D=local;if(requested!==null)D.aiFallback=aiFailure;}
+ if(!D.q.length)throw Error(L.length?"Couldn't find clear question prompts in this PDF. Check the language setting and try again.":'No readable text found, even with text recognition. Try a clearer scan, or pick the worksheet language.');
+ const detected=Math.max(D.q.length,Number(D.detectedQuestionCount)||0);
+ if(detected>D.q.length)D.trimmedFrom=detected;
+ const limit=requested===null?D.q.length:requested;
+ if(D.q.length>limit){D.trimmedFrom=Math.max(D.trimmedFrom||0,D.q.length);D.q=D.q.slice(0,limit)}
+ return D
+}):Promise.resolve(JSON.parse(JSON.stringify(SEED))))
+.then(D=>{S.D=D;S.up='review';render();
+ const messages=[];
+ if(D.aiFallback)messages.push('AI separation was unavailable, so the local PDF reader was used.');
+ if(D.trimmedFrom)messages.push((D.aiUsed?'AI detected ':'Detected ')+D.trimmedFrom+' questions; keeping the first '+D.q.length+'.');
+ else if(D.aiUsed)messages.push('AI separated the reading passage from the question list. Review it before publishing.');
+ if(!D.aiUsed&&!D.aiFallback&&D.keyFound)messages.push('📄 PDF answer key detected: '+D.keyCount+' answer(s) filled automatically. Please review.');
+ if(messages.length)toast(messages.join(' '));
+}).catch(e=>{S.up='idle';render();toast(e.message||'Could not read this PDF')})}
 const PB='https://cdn.jsdelivr.net/npm/pdfjs-dist@3.11.174/';
 const pdfOpts=async f=>({data:await f.arrayBuffer(),cMapUrl:PB+'cmaps/',cMapPacked:true,standardFontDataUrl:PB+'standard_fonts/'});
 function loadPdfJs(){return(window.pdfjsLib?Promise.resolve():new Promise((ok,no)=>{const s=document.createElement('script');s.src=PB+'build/pdf.min.js';s.onload=ok;s.onerror=()=>no(Error('Could not load the PDF reader. Check your internet connection.'));document.head.append(s)})).then(()=>{pdfjsLib.GlobalWorkerOptions.workerSrc=PB+'build/pdf.worker.min.js'})}
@@ -169,25 +236,68 @@ function readTeacherKey(lines){
  }
  return map;
 }
-function parse(lines,name){const QR=/^(?:\p{L}{1,8}\.?\s*)?(\d{1,3})\s*[題题問号號番]?\s*[.)\]:、。]\s*(.+)/u,
- OS='(?:[.)、]\\s+|[.)、](?=[^\\x00-\\x7F]))',OR=new RegExp('(?:^|\\s)\\(?(\\p{L})'+OS,'u'),OL=new RegExp('^\\(?\\p{L}'+OS,'u'),AR=new RegExp('^'+KEY+'\\s*[:\\-]\\s*(.+)','iu'),KR=new RegExp(KEY,'iu'),
- NK=/(\d{1,3})\s*[.)、:\-]?\s*([A-Da-d])(?![\p{L}\p{Nd}])/gu,END=/[:?؟。.!)_]\s*$/;
- // The answer scheme must never be parsed as additional student questions.
+function chineseNum(s){
+ const digits={零:0,〇:0,一:1,二:2,两:2,三:3,四:4,五:5,六:6,七:7,八:8,九:9,十:10};
+ if(/^十$/.test(s))return 10;
+ if(s.includes('十')){const p=s.split('十');return (p[0]?digits[p[0]]:1)*10+(p[1]?digits[p[1]]:0)}
+ return s.split('').reduce((n,c)=>n*10+(digits[c]??0),0);
+}
+function numberedLead(line){
+ const patterns=[
+  /^\s*(?:Question|Q|Soalan)\s*(\d{1,3})\s*[:：.)、-]\s*(.+)$/iu,
+  /^\s*(?:问题|題目|題)\s*(\d{1,3})\s*[:：.)、-]?\s*(.+)$/iu,
+  /^\s*(?:Q(?:uestion)?\s*)?(\d{1,3})\s*[题題問号號番]?\s*[.)\]:、。．]\s*(.+)$/iu,
+  /^\s*[（(]\s*(\d{1,3})\s*[）)]\s*(.+)$/u,
+  /^\s*第\s*(\d{1,3})\s*[题題問]\s*[:：.)、]?\s*(.+)$/u,
+  /^\s*[（(]\s*([一二三四五六七八九十两〇零]+)\s*[）)]\s*(.+)$/u,
+  /^\s*([一二三四五六七八九十两〇零]+)\s*[、.．:：]\s*(.+)$/u,
+  /^\s*第\s*([一二三四五六七八九十两〇零]+)\s*[题題問]\s*[:：.)、]?\s*(.+)$/u
+ ];
+ for(let ix=0;ix<patterns.length;ix++){const m=line.match(patterns[ix]);if(m){const isCn=ix>=5;return{n:isCn?chineseNum(m[1]):Number(m[1]),text:m[2].trim()}}}
+ return null;
+}
+function looksLikeQuestion(text){
+ const t=String(text||'').trim();if(!t)return false;
+ if(/[?？]/u.test(t))return true;
+ if(/_{2,}|（\s*）|\(\s*\)|\[\s*\]|……|……|填空|[填补]充横线/u.test(t))return true;
+ const zh=/(?:根据.{0,16}(?:文章|短文|材料|课文|段落|故事)|从文中|联系上下文|阅读理解|谁|什么|为什么|为何|怎样|如何|哪(?:个|些|里|儿|一句|一段)|何时|什么时候|多少|几(?:个|次|岁|年)|请(?:你)?(?:根据|说明|写出|回答|选择|判断|找出|指出|说出|补充|完成|填写|圈出|划出|谈谈)|写出|指出|说出|列出|简述|解释|说明|概括|比较|分析|选择|选出|补充|完成|填入|填上|判断|找出|划出|圈出|标出|摘录|抄写|谈谈|回答|给.{0,8}取名|中心思想|主要内容|用.{0,10}(?:回答|写出|填入))/u;
+ const enMs=/(?:\bwhat\b|\bwho\b|\bwhen\b|\bwhere\b|\bwhy\b|\bhow\b|\bwhich\b|\bwhose\b|according to|based on|state|name|list|describe|explain|identify|choose|select|write|give|find|complete|fill in|circle|underline|match|answer|true or false|calculate|solve|nyatakan|apakah|siapakah|mengapakah|bilakah|di manakah|bagaimanakah|berikan|senaraikan|terangkan|jelaskan|huraikan|pilih|tandakan|lengkapkan|isi tempat kosong|berdasarkan|menurut|tulis|cari|nyatakan|padankan)\b/i;
+ return zh.test(t)||enMs.test(t);
+}
+function parse(lines,name){
+ const NK=/(\d{1,3})\s*[.)、:\-]?\s*([A-Da-d])(?![\p{L}\p{Nd}])/gu;
+ const OS='(?:[.)、]\\s+|[.)、](?=[^\\x00-\\x7F]))',OR=new RegExp('(?:^|\\s)\\(?(\\p{L})'+OS,'u'),OL=new RegExp('^\\(?\\p{L}'+OS,'u');
+ const AR=new RegExp('^'+KEY+'\\s*[:：\\-]\\s*(.+)','iu'),KR=new RegExp(KEY,'iu');
  const keyStart=lines.findIndex(l=>/^\s*(?:skema\s+jawapan|answer\s+key|marking\s+scheme|答案|参考答案|解答)\s*[:：]?\s*$/iu.test(l));
  const body=keyStart<0?lines:lines.slice(0,keyStart),teacherKey=keyStart<0?{}:readTeacherKey(lines.slice(keyStart+1));
  const qs=[],km={},intro=[];let cur=null,title='',m;
- for(const l of body){
- if(/^[_\-.…—\s]{3,}$/.test(l))continue;
- if(/^\s*(?:Bahagian|Section|Part)\s+[A-Z](?:\s|:|$)/i.test(l)){cur=null;continue}
- if(m=l.match(QR)){cur={n:Number(m[1]),q:m[2],o:[],lab:[],txt:'',key:null};qs.push(cur);continue}
- if(KR.test(l)){const k=[...l.matchAll(NK)];if(k.length>=2){k.forEach(x=>km[x[1]]=x[2].toLowerCase());cur=null;continue}}
- if(!cur){if(!title&&l.length<90&&!/[.!?。！？]$/.test(l)&&!/(name|date|nama|tarikh|nombre|fecha|nom|datum|имя|дата|名前|姓名|日期|이름|الاسم|التاريخ)\s*:/iu.test(l))title=l;else intro.push(l);continue}
- if(m=l.match(AR)){const t=m[1].trim(),k=t.match(/^\(?(\p{L})(?![\p{L}\p{Nd}])/u);cur.key=k?k[1].toLowerCase():null;cur.txt=t;continue}
- if(OL.test(l)){const p=l.split(OR),f=p[1].toLowerCase(),a=cur.lab[cur.lab.length-1],
- ok=cur.o.length?(/[a-z]/.test(a)&&/[a-z]/.test(f)?f.charCodeAt(0)===a.charCodeAt(0)+1:true):(/[a-z]/.test(f)?f==='a':true);
- if(!ok){cur=null;continue}
- for(let i=1;i<p.length;i+=2){cur.lab.push(p[i].toLowerCase());cur.o.push((p[i+1]||'').trim())}continue}
- if(cur.o.length)cur.o[cur.o.length-1]+=' '+l;else if(!END.test(cur.q))cur.q+=' '+l
+ const section=/^\s*(?:Bahagian|Section|Part)\s+[A-Z](?:\s|:|$)/i;
+ const sectionZh=/^\s*(?:阅读理解(?:题目|问题)?|问题(?:如下|部分)?|阅读题|练习题|回答以下问题|问题与答案|soalan|questions?|comprehension questions?)\s*[:：]?\s*$/iu;
+ const instruction=/^\s*(?:阅读(?:下面|下列|这篇|本篇|短文|文章|材料)|请阅读|读一读|仔细阅读|根据.{0,24}(?:文章|短文|材料).{0,18}(?:回答|完成|作答).{0,12}(?:问题|练习|题目)|完成(?:下列|以下|下面)?(?:练习|题目|问题)|回答(?:下列|以下|上面)?问题|Read (?:the|this|following) (?:passage|text|article)|Read the passage|Answer the following questions)/iu;
+ for(const l0 of body){
+  const l=String(l0||'').trim();if(!l||/^[_\-.…—\s]{3,}$/.test(l))continue;
+  if(section.test(l)){cur=null;continue}
+  if(sectionZh.test(l)||instruction.test(l)){cur=null;continue}
+  const lead=numberedLead(l);
+  // Section directions like '一、阅读短文，完成练习' are headings, not individual questions.
+  if(lead&&instruction.test(lead.text)){cur=null;continue}
+  // A number alone is not enough: numbered paragraphs in an article stay in the passage.
+  if(lead&&looksLikeQuestion(lead.text)){
+   cur={n:lead.n,q:lead.text,o:[],lab:[],txt:'',key:null};qs.push(cur);continue;
+  }
+  if(KR.test(l)){const k=[...l.matchAll(NK)];if(k.length>=2){k.forEach(x=>km[x[1]]=x[2].toLowerCase());cur=null;continue}}
+  if(!cur){
+   // Chinese short lines are often the article's own title; keep them with the passage.
+   const isCjk=/\p{Script=Han}/u.test(l);
+   if(!title&&!lead&&!isCjk&&l.length<90&&!/[.!?。！？]$/.test(l)&&!/(name|date|nama|tarikh|nombre|fecha|nom|datum|имя|дата|名前|姓名|日期|이름|الاسم|التاريخ)\s*:/iu.test(l)){title=l;if(!/^(?:worksheet\b|reading comprehension\b|comprehension\b|science worksheet\b|english worksheet\b|bahasa melayu\b|standard\s*[1-6]|year\s*[1-6]|section\b|subject\b|petikan\b|文章|阅读理解|阅读文章|短文|name\s*:|date\s*:)/iu.test(l))intro.push(l)}
+   else intro.push(l);
+   continue;
+  }
+  if(m=l.match(AR)){const t=m[1].trim(),k=t.match(/^\(?([\p{L}])(?![\p{L}\p{Nd}])/u);cur.key=k?k[1].toLowerCase():null;cur.txt=t;continue}
+  if(OL.test(l)){const p=l.split(OR),f=p[1].toLowerCase(),a=cur.lab[cur.lab.length-1],ok=cur.o.length?(/[a-z]/.test(a)&&/[a-z]/.test(f)?f.charCodeAt(0)===a.charCodeAt(0)+1:true):(/[a-z]/.test(f)?f==='a':true);
+   if(!ok){cur=null;if(!intro.length)intro.push(l);continue}
+   for(let i=1;i<p.length;i+=2){cur.lab.push(p[i].toLowerCase());cur.o.push((p[i+1]||'').trim())}continue}
+  if(cur.o.length)cur.o[cur.o.length-1]+=' '+l;else if(!/[?？。.!]$/.test(cur.q))cur.q+=' '+l;
  }
  const cl=t=>t.replace(/_{2,}/g,'').replace(/\s+/g,' ').trim();
  let extracted=0,unmatched=[];
@@ -196,19 +306,15 @@ function parse(lines,name){const QR=/^(?:\p{L}{1,8}\.?\s*)?(\d{1,3})\s*[題题�
   if(x.o.length>=2){
    const k=key?.letter?.toLowerCase()||x.key||km[x.n]||null;
    let a=k?x.lab.indexOf(k):-1;
-   // Some keys write only the full answer, rather than A/B/C/D.
    if(a<0&&key?.text){const v=key.text.toLocaleLowerCase().trim();a=x.o.findIndex(o=>o.toLocaleLowerCase().trim()===v)}
    if(a<0&&x.txt)a=x.o.findIndex(o=>o.toLowerCase()===x.txt.toLowerCase());
-   if(key&&a<0)unmatched.push(x.n);
-   if(key&&a>=0)extracted++;
+   if(key&&a<0)unmatched.push(x.n);if(key&&a>=0)extracted++;
    return{t:'mc',q:cl(x.q),o:x.o,a,...(key&&a>=0?{suggestion:'📄 Answer extracted from the PDF teacher answer key. Verify before publishing.'}:{})}
   }
-  const a=key?.text||x.txt||'';
-  if(key?.text){extracted++}
+  const a=key?.text||x.txt||'';if(key?.text)extracted++;
   return{t:'tx',q:cl(x.q),a,...(key?.text?{suggestion:'📄 Model answer extracted from the PDF teacher answer key. Review before publishing.'}:{})}
  });
- if(!q.length)q.push(...body.filter(l=>/[?؟]\s*$/.test(l)).map(l=>({t:'tx',q:l,a:''})));
- return{title:(title||name).slice(0,80),lang:S.lang==='msa'?'ms':'en',passage:intro.join('\n').slice(0,20000),q,keyFound:keyStart>=0,keyCount:extracted,keyUnmatched:unmatched};
+ return{title:(title||name).slice(0,80),lang:S.lang==='msa'?'ms':(['chi_sim','chi_tra'].includes(S.lang)?'zh':'en'),passage:intro.join('\n').slice(0,20000),q,keyFound:keyStart>=0,keyCount:extracted,keyUnmatched:unmatched};
 }
 // Malay-aware, offline answer suggestions. These are rule-based, not a remote AI model.
 const MS_WORDS={
@@ -465,11 +571,12 @@ function suggestAll(){let changed=0;
  const s=offlineMalay(q,S.D.passage);if(s){q.a=s.a;q.suggestion=s.why;changed++}}
  render();toast(changed?'Suggested '+changed+' answer(s). Review all suggestions before publishing.':'Offline Malay rules could not determine the remaining answers confidently. Use 🤖 AI: Check ALL questions, or select answers manually.');
 }
+function moveQuestionToPassage(i){const q=S.D?.q[i];if(!q)return;const extras=q.t==='mc'&&q.o?.length?'\n'+q.o.map((o,j)=>String.fromCharCode(65+j)+'. '+o).join('\n'):'';S.D.passage=[S.D.passage||'',q.q+extras].filter(Boolean).join('\n\n');S.D.q.splice(i,1);render();toast('Moved into 文章 / petikan. Review the passage order before publishing.')}
 function review(){const D=S.D;
-return`<h1>Review digital version</h1><p class="mu">Check extracted text and answers before publishing. Gemini can suggest answers from the passage, but the teacher must verify them.</p>${D.keyFound?`<div class="card" role="status" style="background:#eaf8ed"><b>📄 Teacher answer key detected!</b><p>${D.keyCount} answer(s) filled from the PDF automatically. ${D.keyUnmatched.length?`Could not match question(s): ${D.keyUnmatched.join(", ")}.`:""} Please verify every answer before publishing. The answer key is not shown to students.</p></div>`:""}
-<div class="card"><label class="q" for="wt">Worksheet title / Tajuk lembaran kerja</label><input type="text" id="wt" value="${esc(D.title)}" oninput="S.D.title=this.value"><label class="q" for="wl" style="display:block;margin-top:12px">Worksheet language / Bahasa</label><select id="wl" onchange="S.D.lang=this.value"><option value="en" ${D.lang!=='ms'?'selected':''}>English</option><option value="ms" ${D.lang==='ms'?'selected':''}>Bahasa Melayu</option></select></div><div class="card"><label class="q" for="passage">Reading comprehension passage / Petikan kefahaman (文章)</label><p class="mu">Students will see this passage above the questions. Check that the extracted text is complete and correct.</p><textarea id="passage" style="min-height:190px" placeholder="Paste or edit the reading passage here / Tampal petikan di sini" oninput="S.D.passage=this.value">${esc(D.passage||'')}</textarea></div>`+
+return`<h1>Review digital version</h1><p class="mu">Check every field before publishing. Numbered article paragraphs are filtered out unless they look like real questions. When a passage line slips into the question list, tap “Move to passage”.</p>${D.trimmedFrom?`<div class="card" role="status"><b>Question limit applied</b><p class="mu">${D.trimmedFrom} questions were detected; ${D.q.length} are included in this draft. Choose “All detected questions” before uploading if you need the rest.</p></div>`:''}${D.keyFound?`<div class="card" role="status" style="background:#eaf8ed"><b>📄 Teacher answer key detected!</b><p>${D.keyCount} answer(s) filled from the PDF automatically. ${D.keyUnmatched.length?`Could not match question(s): ${D.keyUnmatched.join(", ")}.`:""} Please verify every answer before publishing. The answer key is not shown to students.</p></div>`:""}
+<div class="card"><label class="q" for="wt">Worksheet title / Tajuk lembaran kerja</label><input type="text" id="wt" value="${esc(D.title)}" oninput="S.D.title=this.value"><label class="q" for="wl" style="display:block;margin-top:12px">Worksheet language / Bahasa</label><select id="wl" onchange="S.D.lang=this.value"><option value="en" ${D.lang==='en'?'selected':''}>English</option><option value="ms" ${D.lang==='ms'?'selected':''}>Bahasa Melayu</option><option value="zh" ${D.lang==='zh'?'selected':''}>中文 (Chinese)</option></select></div><div class="card"><label class="q" for="passage">Reading comprehension passage / Petikan kefahaman (文章)</label><p class="mu">Students will see this passage above the questions. Check that the extracted text is complete and correct.</p><textarea id="passage" style="min-height:190px" placeholder="Paste or edit the reading passage here / Tampal petikan di sini" oninput="S.D.passage=this.value">${esc(D.passage||'')}</textarea></div>`+
 `<div class="actions" style="margin-bottom:12px"><button class="pri" id="check-all-ai" onclick="checkAllWithGemini()">🤖 AI: Check ALL questions</button><button onclick="geminiSuggest()">🤖 Gemini: suggest missing answers</button><button onclick="suggestAll()">🇲🇾 Offline: Check missing Malay answers</button><span class="mu">Suggestions require teacher review; uncertain questions are left blank.</span></div>`+
-D.q.map((q,i)=>`<div class="card" id="question-${i}"><div style="display:flex;justify-content:space-between;align-items:center"><span class="badge b-p">${q.t==='mc'?'Multiple choice':'Written sentences'}</span><button class="sm" onclick="S.D.q.splice(${i},1);render()" aria-label="Delete question ${i+1}">Delete</button></div>
+D.q.map((q,i)=>`<div class="card" id="question-${i}"><div style="display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap"><span class="badge b-p">Question ${i+1} · ${q.t==='mc'?'Multiple choice':'Written answer'}</span><div class="actions"><button class="sm" onclick="moveQuestionToPassage(${i})" aria-label="Move question ${i+1} into the reading passage">Move to 文章</button><button class="sm" onclick="S.D.q.splice(${i},1);render()" aria-label="Delete question ${i+1}">Delete</button></div></div>
 <textarea style="min-height:70px;margin:10px 0" aria-label="Question ${i+1} text" oninput="S.D.q[${i}].q=this.value">${esc(q.q)}</textarea>`+
 (q.t==='mc'?q.o.map((o,j)=>`<div class="opt edit"><input type="radio" name="c${i}" ${q.a===j?'checked':''} onchange="S.D.q[${i}].a=${j}" aria-label="Mark option ${j+1} correct"><input type="text" value="${esc(o)}" oninput="S.D.q[${i}].o[${j}]=this.value" aria-label="Option ${j+1}"></div>`).join('')+`<button class="sm" onclick="S.D.q[${i}].o.push('New option');render()">+ Add option</button><button class="sm" style="margin-left:8px" onclick="S.D.q[${i}]={t:'tx',q:S.D.q[${i}].q,a:''};render()">Change to written question</button><button class="sm" style="margin-left:8px" onclick="geminiSuggest(${i})">🤖 Gemini answer</button><button class="sm" onclick="suggestOne(${i})">🇲🇾 Offline</button>${q.suggestion?`<p class="mu" role="status">⚠️ Suggested: ${esc(q.suggestion)} Please verify.</p>`:''}<p class="mu">Select the radio button next to the correct answer. If students should type an answer instead, choose Change to written question.</p>`:
 `<label class="mu" for="a${i}">Model answer (shown to you when marking)</label><textarea id="a${i}" oninput="S.D.q[${i}].a=this.value">${esc(q.a)}</textarea><button class="sm" onclick="geminiSuggest(${i})">🤖 Suggest written answer with Gemini</button>${q.suggestion?`<p class="mu">⚠️ ${esc(q.suggestion)} — verify before publishing.</p>`:''}`)+'</div>').join('')+
