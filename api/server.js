@@ -38,8 +38,10 @@ function checkPw(pw, u) { const a = Buffer.from(hashPw(pw, u.salt), 'hex'), b = 
 const secret = () => E.TOKEN_SECRET || crypto.createHash('sha256').update('worksheet-desk:' + (E.SUPABASE_SERVICE_ROLE_KEY || '')).digest('hex');
 const mac = p => crypto.createHmac('sha256', secret()).update(p).digest('base64url');
 function sign(u) {
-  const hours = u.role === 'teacher' ? 8 : 12;
-  const p = Buffer.from(JSON.stringify({ uid: u.id, role: u.role, name: u.name, un: u.username, exp: Date.now() + hours * 3600e3 })).toString('base64url');
+  // Persistent browser sessions last 30 days at a time and are renewed on return/activity.
+  // Accept both database user objects and already-verified token claims.
+  const uid = u.id ?? u.uid, un = u.username ?? u.un;
+  const p = Buffer.from(JSON.stringify({ uid, role: u.role, name: u.name, un, exp: Date.now() + 30 * 24 * 3600e3 })).toString('base64url');
   return p + '.' + mac(p);
 }
 function who(req) {
@@ -137,6 +139,7 @@ module.exports = async (req, res) => {
     /* ----- signed in (student or teacher) ----- */
     const me = who(req);
     if (!me) return out(res, 401, { error: 'Please sign in.' });
+    if (action === 'refresh') return out(res, 200, { token: sign(me) });
 
     if (action === 'worksheets') {
       const s = await state();
